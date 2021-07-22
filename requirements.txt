@@ -34,3 +34,4 @@ textblob~=0.15.3
 beautifulsoup4~=4.9.3
 requests~=2.26.0
 pysafebrowsing~=0.1.1
+is-safe-url~=1.0
