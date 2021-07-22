@@ -8,6 +8,7 @@ itsdangerous==1.1.0
 Jinja2==2.11.2
 MarkupSafe==1.1.1
 Werkzeug==1.0.1
+gunicorn
 
 # Flask Packages
 Flask-Login==0.4.0
@@ -35,4 +36,3 @@ beautifulsoup4~=4.9.3
 requests~=2.26.0
 pysafebrowsing~=0.1.1
 is-safe-url~=1.0
-nested-lookup~=0.2.22
