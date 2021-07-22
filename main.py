@@ -13,15 +13,13 @@ import pandas as pd
 from joblib import dump, load
 import numpy as np
 
-import nltk
-# nltk.download('punkt')
-# nltk.download('stopwords')
+# import nltk
 from nltk import PorterStemmer, word_tokenize
 from nltk.corpus import stopwords
 from functions import mainFunctions
 
 # Import function from another python file
-from sklearn.feature_extraction.text import CountVectorizer
+# from sklearn.feature_extraction.text import CountVectorizer
 
 app = Flask(__name__)
 
