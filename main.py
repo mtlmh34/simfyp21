@@ -62,7 +62,7 @@ def login():
         window.attributes('-topmost', True)
         window.wm_withdraw()
         window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
-        messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials", parent=window)
+        tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials", parent=window)
         return render_template('index.html', image_file=image_file)
 
 
