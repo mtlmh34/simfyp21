@@ -15,8 +15,8 @@ from joblib import dump, load
 import numpy as np
 
 #import tkinter
-#from tkinter import *
-#import tkinter.messagebox
+from tkinter import *
+import tkinter.messagebox
 
 import nltk
 nltk.download('punkt')
