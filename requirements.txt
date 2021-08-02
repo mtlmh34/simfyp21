@@ -40,3 +40,4 @@ nested-lookup~=0.2.22
 
 # Add
 validate_email==1.3.0
+tkinter==8.6
