@@ -93,14 +93,14 @@ class mainFunctions:
                 emailAddress = emailAd.split('<')
                 emailAd = emailAddress[1]
                 emailAd = emailAd[:-1]
-                is_valid = validate_email(emailAd, smtp_timeout=10, dns_timeout=10)
-            # print(is_valid)
+                is_valid = validate_email(emailAd, smtp_timeout=10)
+                # print(is_valid)
                 if is_valid:
                     return True
                 else:
                     return False
             else:
-                is_valid = validate_email(emailAd, smtp_timeout=10, dns_timeout=10)
+                is_valid = validate_email(emailAd, smtp_timeout=10)
                 # print(is_valid)
                 if is_valid:
                     return True
@@ -172,14 +172,17 @@ class mainFunctions:
                 return True
 
         # TEST
-        if not self:
-            return True
-        linkList = extract_link(self)
-        print(linkList)
-        if not linkList:
-            return True
-        result = check_urls(linkList)
-        return result
+        try:
+            if not self:
+                return True
+            linkList = extract_link(self)
+            print(linkList)
+            if not linkList:
+                return True
+            result = check_urls(linkList)
+            return result
+        except:
+            return False
 
 
 '''
