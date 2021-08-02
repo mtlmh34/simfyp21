@@ -13,12 +13,12 @@ from openpyxl import load_workbook
 import pandas as pd
 from joblib import dump, load
 import numpy as np
-
-#import tkinter
-from tkinter import *
-import tkinter.messagebox
+# import tkinter
+# from tkinter import *
+# import tkinter.messagebox
 
 import nltk
+
 nltk.download('punkt')
 nltk.download('stopwords')
 from nltk import PorterStemmer, word_tokenize
@@ -29,7 +29,6 @@ from functions import mainFunctions
 from sklearn.feature_extraction.text import CountVectorizer
 
 app = Flask(__name__)
-
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -59,11 +58,12 @@ def login():
             return render_template('index.html', image_file=image_file)
 
     except imaplib.IMAP4.error:
-        window = Tk()
+        '''window = Tk()
         window.attributes('-topmost', True)
         window.wm_withdraw()
         window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
-        tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials", parent=window)
+        tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
+                                     parent=window)'''
         return render_template('index.html', image_file=image_file)
 
 
@@ -130,7 +130,6 @@ def email():
     server = e.connect(imap_url, username, password)
     # inbox = server.listup()
     inbox = server.listids()
-
     if os.path.isfile('logs.xlsx'):
         # Check if email sheet exist
         wb = load_workbook("logs.xlsx")  # open an Excel file and return a workbook
@@ -804,7 +803,6 @@ def email():
 
             excelRow += 1
         excel.close()
-
     server = smtplib.SMTP('smtp.gmail.com', 587)  # smtp settings, change accordingly.
     server.ehlo()
     server.starttls()  # secure connection
