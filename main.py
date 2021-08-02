@@ -14,6 +14,9 @@ from joblib import dump, load
 import numpy as np
 
 # import nltk
+import nltk
+nltk.download('stopwords')
+nltk.download('punkt')
 from nltk import PorterStemmer, word_tokenize
 from nltk.corpus import stopwords
 from functions import mainFunctions
@@ -459,4 +462,4 @@ def showQuarantine():
 
 # to run application
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=8080, debug=True)
+    app.run(host='0.0.0.0', port=8080, debug=False)
