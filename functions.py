@@ -94,7 +94,7 @@ class mainFunctions:
                 emailAddress = emailAd.split('<')
                 emailAd = emailAddress[1]
                 emailAd = emailAd[:-1]
-                is_valid = validate_email(email_address=emailAd, smtp_timeout=10, dns_timeout=10)
+                is_valid = validate_email(emailAd, smtp_timeout=10)
             # print(is_valid)
                 if is_valid:
                     return True
@@ -102,7 +102,7 @@ class mainFunctions:
                     return False
             elif emailType == "1":
                 print(emailAd)
-                is_valid = validate_email(email_address=emailAd, smtp_timeout=10, dns_timeout=10)
+                is_valid = validate_email(emailAd, smtp_timeout=10)
                 # print(is_valid)
                 if is_valid:
                     return True
