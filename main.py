@@ -13,9 +13,10 @@ from openpyxl import load_workbook
 import pandas as pd
 from joblib import dump, load
 import numpy as np
-import tkinter
-from tkinter import *
-import tkinter.messagebox
+
+#import tkinter
+#from tkinter import *
+#import tkinter.messagebox
 
 import nltk
 nltk.download('punkt')
