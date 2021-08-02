@@ -80,29 +80,27 @@ class mainFunctions:
         else:
             return False
 
-    def email_valid(self, emailType):
+    def email_valid(self):
         # Function to check if email address is legitimate
         # Import py3-validate-email package
         from validate_email import validate_email
         from openpyxl import load_workbook
-
         emailAd = self
         # To only check string that contain @
         if "@" in emailAd:
             # To get only the email address
-            if emailType == "Gmail":
+            if "<" in emailAd:
                 emailAddress = emailAd.split('<')
                 emailAd = emailAddress[1]
                 emailAd = emailAd[:-1]
-                is_valid = validate_email(emailAd, smtp_timeout=10)
+                is_valid = validate_email(emailAd, smtp_timeout=10, dns_timeout=10)
             # print(is_valid)
                 if is_valid:
                     return True
                 else:
                     return False
-            elif emailType == "1":
-                print(emailAd)
-                is_valid = validate_email(emailAd, smtp_timeout=10)
+            else:
+                is_valid = validate_email(emailAd, smtp_timeout=10, dns_timeout=10)
                 # print(is_valid)
                 if is_valid:
                     return True
