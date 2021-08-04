@@ -13,12 +13,12 @@ from openpyxl import load_workbook
 import pandas as pd
 from joblib import dump, load
 import numpy as np
-
-#import tkinter
+# import tkinter
 from tkinter import *
 import tkinter.messagebox
 
 import nltk
+
 nltk.download('punkt')
 nltk.download('stopwords')
 from nltk import PorterStemmer, word_tokenize
@@ -31,9 +31,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 app = Flask(__name__)
 
 
-
 @app.route('/', methods=['GET', 'POST'])
 def login():
+    loading_gif = url_for('static', filename='imgload.gif')
     image_file = url_for('static', filename='login.png')  # image
     # declare variables
     global server
@@ -56,14 +56,15 @@ def login():
 
             return redirect('/inbox')
         else:
-            return render_template('index.html', image_file=image_file)
+            return render_template('index.html', image_file=image_file, loading_gif=loading_gif)
 
     except imaplib.IMAP4.error:
         window = Tk()
         window.attributes('-topmost', True)
         window.wm_withdraw()
         window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
-        tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials", parent=window)
+        tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
+                                     parent=window)
         return render_template('index.html', image_file=image_file)
 
 
@@ -130,7 +131,6 @@ def email():
     server = e.connect(imap_url, username, password)
     # inbox = server.listup()
     inbox = server.listids()
-
     if os.path.isfile('logs.xlsx'):
         # Check if email sheet exist
         wb = load_workbook("logs.xlsx")  # open an Excel file and return a workbook
@@ -141,13 +141,13 @@ def email():
             email = server.mail(server.listids()[0])
             ws = wb[username]
             excelRow = 2
-            test = ws["A2"].value
+            '''test = ws["A2"].value
             test = test.strip()
             test1 = email.title
             test1 = test1.strip(test1)
             for a, b in zip(test, test1):
                 if a != b:
-                    print(a + b)
+                    print(a + b)'''
             if ws["A2"].value == email.title and ws["B2"].value == email.from_addr:
                 print("This is working")
                 for x in range(1, ws.max_row):
@@ -194,8 +194,9 @@ def email():
                     print(excelPosition)
 
                     excelRow += 1
+                    wb.save("logs.xlsx")
 
-            else:  # user never login before
+            '''else:  # user have no new email
                 print("Finding new email")
                 checkTitle = ws["A2"].value
                 checkAddr = ws["B2"].value
@@ -354,76 +355,77 @@ def email():
                         print(excelPosition)
 
                         excelRow += 1
-                        # wb.save("logs.xlsx")
-                wb.save("logs.xlsx")
-                # load into list for web
-                wb = load_workbook("logs.xlsx")
-                wsNew = wb[username]
-                print(wsNew["A2"].value)
-                print(excelRow)
-                excelRow = 2
-                for x in range(1, wsNew.max_row):
-                    # read from excel file
-                    excelColumn = 'A'
-                    excelPosition = excelColumn + str(excelRow)
-                    subject_list.append(wsNew[excelPosition].value)
-                    print(excelPosition)
+                        # wb.save("logs.xlsx")'''
+            # wb.save("logs.xlsx")
+            # load into list for web
+            wb = load_workbook("logs.xlsx")
+            wsNew = wb[username]
+            print(wsNew["A2"].value)
+            print(excelRow)
+            excelRow = 2
+            for x in range(1, wsNew.max_row):
+                # read from excel file
+                excelColumn = 'A'
+                excelPosition = excelColumn + str(excelRow)
+                subject_list.append(wsNew[excelPosition].value)
+                print(excelPosition)
 
-                    excelColumn = chr(ord(excelColumn) + 1)
-                    excelPosition = excelColumn + str(excelRow)
-                    email_address_list.append(wsNew[excelPosition].value)
-                    print(excelPosition)
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                email_address_list.append(wsNew[excelPosition].value)
+                print(excelPosition)
 
-                    excelColumn = chr(ord(excelColumn) + 1)
-                    excelPosition = excelColumn + str(excelRow)
-                    body_list.append(wsNew[excelPosition].value)
-                    print(excelPosition)
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                body_list.append(wsNew[excelPosition].value)
+                print(excelPosition)
 
-                    excelColumn = chr(ord(excelColumn) + 1)
-                    excelPosition = excelColumn + str(excelRow)
-                    print(excelPosition)
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                print(excelPosition)
 
-                    excelColumn = chr(ord(excelColumn) + 1)
-                    excelPosition = excelColumn + str(excelRow)
-                    result_list.append(wsNew[excelPosition].value)
-                    print(excelPosition)
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                result_list.append(wsNew[excelPosition].value)
+                print(excelPosition)
 
-                    excelColumn = chr(ord(excelColumn) + 1)
-                    excelPosition = excelColumn + str(excelRow)
-                    print(excelPosition)
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                print(excelPosition)
 
-                    excelColumn = chr(ord(excelColumn) + 1)
-                    excelPosition = excelColumn + str(excelRow)
-                    print(excelPosition)
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                print(excelPosition)
 
-                    excelColumn = chr(ord(excelColumn) + 1)
-                    excelPosition = excelColumn + str(excelRow)
-                    print(excelPosition)
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                print(excelPosition)
 
-                    excelColumn = chr(ord(excelColumn) + 1)
-                    excelPosition = excelColumn + str(excelRow)
-                    percentage_list.append(wsNew[excelPosition].value)
-                    print(excelPosition)
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                percentage_list.append(wsNew[excelPosition].value)
+                print(excelPosition)
 
-                    excelRow += 1
+                excelRow += 1
 
         else:  # create new sheet for new email
             print(username + ' does not exists')
             wb.create_sheet(username)
             print(username + ' created')
             ws = wb[username]
+            excelRow = 2
             # server = e.connect(imap_url, username, password)
             # inbox = server.listids()
             for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
                 email = server.mail(server.listids()[x])
-                # log.txt file
+                '''# log.txt file
                 logger.info("----------------------------------------------------------------")
                 logger.info("Email Title:")
                 logger.info(email.title)
                 logger.info("Email from:")
                 logger.info(email.from_addr)
                 logger.info("Message: ")
-                logger.info(email.body)
+                logger.info(email.body)'''
 
                 # store email subject, body in list
                 email_address_list.append(email.from_addr)
@@ -511,97 +513,115 @@ def email():
                 # excel file titles
                 excelColumn1 = 'A1'
                 excelPosition1 = excelColumn1
-                worksheet.write(excelPosition1, "Email Subject", bold)
+                ws[excelPosition1] = "Email Subject"
+                # ws.write(excelPosition1, "Email Subject")
                 print(excelPosition1)
 
                 excelColumn2 = 'B1'
                 excelPosition2 = excelColumn2
-                worksheet.write(excelPosition2, "Name and Email Address", bold)
+                ws[excelPosition2] = "Name and Email Address"
+                # ws.write(excelPosition2, "Name and Email Address")
                 print(excelPosition2)
 
                 excelColumn3 = 'C1'
                 excelPosition3 = excelColumn3
-                worksheet.write(excelPosition3, "Email Content", bold)
+                ws[excelPosition3] = "Email Content"
+                # ws.write(excelPosition3, "Email Content")
                 print(excelPosition3)
 
                 excelColumn4 = 'D1'
                 excelPosition4 = excelColumn4
-                worksheet.write(excelPosition4, "Listing", bold)
+                ws[excelPosition4] = "Listing"
+                # ws.write(excelPosition4, "Listing")
                 print(excelPosition4)
 
                 excelColumn5 = 'E1'
                 excelPosition5 = excelColumn5
-                worksheet.write(excelPosition5, "Classification", bold)
+                ws[excelPosition5] = "Classification"
+                # ws.write(excelPosition5, "Classification")
                 print(excelPosition5)
 
                 excelColumn6 = 'F1'
                 excelPosition6 = excelColumn6
-                worksheet.write(excelPosition6, "Attachment", bold)
+                ws[excelPosition6] = "Attachment"
+                # ws.write(excelPosition6, "Attachment")
                 print(excelPosition6)
 
-                excelColumn6 = 'G1'
-                excelPosition6 = excelColumn6
-                worksheet.write(excelPosition6, "ML Result", bold)
-                print(excelPosition6)
-
-                excelColumn6 = 'H1'
-                excelPosition6 = excelColumn6
-                worksheet.write(excelPosition6, "Function Result", bold)
-                print(excelPosition6)
-
-                excelColumn7 = 'I1'
+                excelColumn7 = 'G1'
                 excelPosition7 = excelColumn7
-                worksheet.write(excelPosition7, "Percentage", bold)
+                ws[excelPosition7] = "Ml Result"
+                # ws.write(excelPosition6, "ML Result")
                 print(excelPosition7)
+
+                excelColumn8 = 'H1'
+                excelPosition8 = excelColumn8
+                ws[excelPosition8] = "Function Result"
+                # ws.write(excelPosition8, "Function Result")
+                print(excelPosition8)
+
+                excelColumn9 = 'I1'
+                excelPosition9 = excelColumn9
+                ws[excelPosition9] = "Percentage"
+                # ws.write(excelPosition9, "Percentage")
+                print(excelPosition9)
 
                 # excel file
                 excelColumn = 'A'
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, email.title)
+                ws[excelPosition] = email.title
+                # ws.write(excelPosition, email.title)
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, email.from_addr)
+                ws[excelPosition] = email.from_addr
+                # ws.write(excelPosition, email.from_addr)
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, emailConFormat)
+                ws[excelPosition] = emailConFormat
+                # ws.write(excelPosition, emailConFormat)
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, "-")
+                ws[excelPosition] = "-"
+                # ws.write(excelPosition, "-")
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, result)
+                ws[excelPosition] = result
+                # ws.write(excelPosition, result)
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, emailAttach)
+                ws[excelPosition] = emailAttach
+                # ws.write(excelPosition, emailAttach)
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, ml_result)
+                ws[excelPosition] = ml_result
+                # ws.write(excelPosition, ml_result)
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, function_result)
+                ws[excelPosition] = function_result
+                # ws.write(excelPosition, function_result)
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                worksheet.write(excelPosition, percentage)
+                ws[excelPosition] = percentage
+                # ws.write(excelPosition, percentage)
                 print(excelPosition)
 
                 excelRow += 1
-            excel.close()
+            #ws.close()
             wb.save("logs.xlsx")
 
     else:
@@ -804,7 +824,6 @@ def email():
 
             excelRow += 1
         excel.close()
-
     server = smtplib.SMTP('smtp.gmail.com', 587)  # smtp settings, change accordingly.
     server.ehlo()
     server.starttls()  # secure connection
@@ -955,4 +974,5 @@ def showQuarantine():
 
 # to run application
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    # app.run(host='0.0.0.0', port=8080, debug=False)
+    app.run()

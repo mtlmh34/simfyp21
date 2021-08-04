@@ -127,52 +127,34 @@ from nltk.corpus import stopwords
 # print("hello")
 # end = time.time()
 # print(end - start)
-# from openpyxl import load_workbook
-#
-#
-# wb = load_workbook('logs.xlsx')
-# sheet = wb["blacklist"]  # values will be saved to excel sheet"blacklist"
-# col2 = 'blacklisted'  # value of 2nd column in excel
-#
-# email1 = '  '  # id='email1' from html form
-# if email1.strip() != "":
-#     col1 = email1.strip()
-#     sheet.append([col1, col2])
-#
-# email2 = 'jerrett@gmail.com'
-# if email2.strip() != "":
-#     col1 = email2.strip()
-#     sheet.append([col1, col2])
-#
-# email3 = 'jerrett@gmail.com'
-# if email3.strip() != "":
-#     col1 = email3.strip()
-#     sheet.append([col1, col2])
-#
-# email4 = 'jerrett@gmail.com'
-# if email4.strip() != "":
-#     col1 = email4.strip()
-#     sheet.append([col1, col2])
-#
-# wb.save('logs.xlsx')
-# wb.close()
-#
+from openpyxl import load_workbook
 
-# from openpyxl import load_workbook
-# wb = load_workbook('logs.xlsx')
-# ws = wb["Sheet1"]
-# percentage_list = []
-# subject_list = []
-# body_list = []
-# email_address_list = []
-# result_list = []
-#
-# for row in ws.rows:
-#     if row[4].value == "Suspicious":
-#         subject_list.append(row[0].value)
-#         email_address_list.append(row[1].value)
-#         body_list.append(row[2].value)
-#         result_list.append(row[3].value)
-#
-# for a in subject_list:
-#     print(a)
+
+wb = load_workbook('logs.xlsx')
+sheet = wb["blacklist"]  # values will be saved to excel sheet"blacklist"
+col2 = 'blacklisted'  # value of 2nd column in excel
+
+email1 = '  '  # id='email1' from html form
+if email1.strip() != "":
+    col1 = email1.strip()
+    sheet.append([col1, col2])
+
+email2 = 'jerrett@gmail.com'
+if email2.strip() != "":
+    col1 = email2.strip()
+    sheet.append([col1, col2])
+
+email3 = 'jerrett@gmail.com'
+if email3.strip() != "":
+    col1 = email3.strip()
+    sheet.append([col1, col2])
+
+email4 = 'jerrett@gmail.com'
+if email4.strip() != "":
+    col1 = email4.strip()
+    sheet.append([col1, col2])
+
+wb.save('logs.xlsx')
+wb.close()
+
+
