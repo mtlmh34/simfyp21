@@ -14,8 +14,8 @@ import pandas as pd
 from joblib import dump, load
 import numpy as np
 # import tkinter
-from tkinter import *
-import tkinter.messagebox
+# from tkinter import *
+# import tkinter.messagebox
 
 import nltk
 
@@ -59,12 +59,12 @@ def login():
             return render_template('index.html', image_file=image_file, loading_gif=loading_gif)
 
     except imaplib.IMAP4.error:
-        window = Tk()
+        '''window = Tk()
         window.attributes('-topmost', True)
         window.wm_withdraw()
         window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
         tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
-                                     parent=window)
+                                     parent=window)'''
         return render_template('index.html', image_file=image_file)
 
 
@@ -418,14 +418,14 @@ def email():
             # inbox = server.listids()
             for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
                 email = server.mail(server.listids()[x])
-                '''# log.txt file
+                # log.txt file
                 logger.info("----------------------------------------------------------------")
                 logger.info("Email Title:")
                 logger.info(email.title)
                 logger.info("Email from:")
                 logger.info(email.from_addr)
                 logger.info("Message: ")
-                logger.info(email.body)'''
+                logger.info(email.body)
 
                 # store email subject, body in list
                 email_address_list.append(email.from_addr)
@@ -621,7 +621,7 @@ def email():
                 print(excelPosition)
 
                 excelRow += 1
-            #ws.close()
+            # ws.close()
             wb.save("logs.xlsx")
 
     else:
@@ -975,3 +975,4 @@ def showQuarantine():
 # to run application
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=False)
+    # app.run()
