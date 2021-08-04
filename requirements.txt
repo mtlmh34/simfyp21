@@ -40,4 +40,4 @@ nested-lookup~=0.2.22
 
 # Add
 validate_email==1.3.0
-py-validate-email==1.0.0
+# py-validate-email==1.0.0
