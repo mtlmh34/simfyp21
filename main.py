@@ -14,8 +14,8 @@ import pandas as pd
 from joblib import dump, load
 import numpy as np
 # import tkinter
-from tkinter import *
-import tkinter.messagebox
+# from tkinter import *
+# import tkinter.messagebox
 
 import nltk
 
@@ -59,12 +59,12 @@ def login():
             return render_template('index.html', image_file=image_file, loading_gif=loading_gif)
 
     except imaplib.IMAP4.error:
-        window = Tk()
+        '''window = Tk()
         window.attributes('-topmost', True)
         window.wm_withdraw()
         window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
         tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
-                                     parent=window)
+                                     parent=window)'''
         return render_template('index.html', image_file=image_file)
 
 
@@ -974,5 +974,5 @@ def showQuarantine():
 
 # to run application
 if __name__ == '__main__':
-    # app.run(host='0.0.0.0', port=8080, debug=False)
-    app.run()
+    app.run(host='0.0.0.0', port=8080, debug=False)
+    # app.run()
