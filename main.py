@@ -66,17 +66,18 @@ def login():
             return render_template('index.html', image_file=image_file, loading_gif=loading_gif)
 
     except imaplib.IMAP4.error:
-        window = Tk()
-        window.attributes('-topmost', True)
-        window.wm_withdraw()
-        window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
-        tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
-                                     parent=window)
-        return render_template('index.html', image_file=image_file)
+        # window = Tk()
+        # window.attributes('-topmost', True)
+        # window.wm_withdraw()
+        # window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
+        # tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
+        # parent=window)
+        error = "invalid credentials"
+        return render_template('index.html', image_file=image_file, error=error)
 
 
 ##############################################################################################
-#ML Data processing functions
+# ML Data processing functions
 def cleaning(string):
     string = re.sub("[^0-9a-zA-Z\ ]", "", str(string))
     string = string.lower()
@@ -121,7 +122,7 @@ def email():
     global percentage_list
     global result_list
     global model  # ML Model id 0,1 or 2
-    global model_string # name of model
+    global model_string  # name of model
 
     # 0-naivebayes, 1-MLP, 2-randomforest
     wb = load_workbook('model.xlsx')
@@ -441,20 +442,19 @@ def email():
             for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
                 email = server.mail(server.listids()[x])
                 # log.txt file
-                logger.info("----------------------------------------------------------------")
-                logger.info("Email Title:")
-                logger.info(email.title)
-                logger.info("Email from:")
-                logger.info(email.from_addr)
-                logger.info("Message: ")
-                logger.info(email.body)
+                # logger.info("----------------------------------------------------------------")
+                # logger.info("Email Title:")
+                # logger.info(email.title)
+                # logger.info("Email from:")
+                # logger.info(email.from_addr)
+                # logger.info("Message: ")
+                # logger.info(email.body)
 
                 # store email subject, body in list
                 email_address_list.append(email.from_addr)
                 subject_list.append(email.title)
                 body = mainFunctions.content_formatting(email.body)
                 body_list.append(body)
-
 
                 # ML
                 string = body
@@ -514,8 +514,8 @@ def email():
                     percentage = str(percentage) + '%'
                     percentage_list.append(percentage)
 
-                logger.info("Email attachment: ")
-                logger.info(email.attachments)
+                # logger.info("Email attachment: ")
+                # logger.info(email.attachments)
                 emailAttachment = email.attachments
                 if not emailAttachment:
                     emailAttach = "-"
@@ -535,6 +535,9 @@ def email():
                 emailValidResult = mainFunctions.email_valid(email.from_addr)
                 attachmentResult = mainFunctions.attachment_check(emailAttach)
                 linkResult = mainFunctions.check_link(email.body)
+                print("Email valid: ", emailValidResult)
+                print("attachment check: ", attachmentResult)
+                print("Link Check: ", linkResult)
 
                 # compile result
                 if spellingResult:
@@ -688,20 +691,19 @@ def email():
         for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
             email = server.mail(server.listids()[x])
             # log.txt file
-            logger.info("----------------------------------------------------------------")
-            logger.info("Email Title:")
-            logger.info(email.title)
-            logger.info("Email from:")
-            logger.info(email.from_addr)
-            logger.info("Message: ")
-            logger.info(email.body)
+            # logger.info("----------------------------------------------------------------")
+            # logger.info("Email Title:")
+            # logger.info(email.title)
+            # logger.info("Email from:")
+            # logger.info(email.from_addr)
+            # logger.info("Message: ")
+            # logger.info(email.body)
 
             # store email subject, body in list
             email_address_list.append(email.from_addr)
             subject_list.append(email.title)
             body = mainFunctions.content_formatting(email.body)
             body_list.append(body)
-
 
             # ML
             string = body
@@ -763,8 +765,8 @@ def email():
                 percentage = str(percentage) + '%'
                 percentage_list.append(percentage)
 
-            logger.info("Email attachment: ")
-            logger.info(email.attachments)
+            # logger.info("Email attachment: ")
+            # logger.info(email.attachments)
             emailAttachment = email.attachments
             if not emailAttachment:
                 emailAttach = "-"
@@ -784,6 +786,9 @@ def email():
             emailValidResult = mainFunctions.email_valid(email.from_addr)
             attachmentResult = mainFunctions.attachment_check(emailAttach)
             linkResult = mainFunctions.check_link(email.body)
+            print("Email valid: ", emailValidResult)
+            print("attachment check: ", attachmentResult)
+            print("Link Check: ", linkResult)
 
             # compile result
             if spellingResult:
@@ -902,7 +907,6 @@ def email():
 
             excelRow += 1
         excel.close()
-    print(subject_list)
     server = smtplib.SMTP('smtp.gmail.com', 587)  # smtp settings, change accordingly.
     server.ehlo()
     server.starttls()  # secure connection
@@ -982,6 +986,7 @@ def blacklistnew():
     else:
         return render_template("blacklistnew.html")
 
+
 @app.route('/inbox/blacklist/remove/<email>')
 def removeBlacklist(email):
     wb = load_workbook('blacklist.xlsx')
@@ -1000,6 +1005,7 @@ def removeBlacklist(email):
             wb.save('blacklist.xlsx')
             wb.close()
     return redirect('/inbox/blacklist')
+
 
 @app.route('/inbox/whitelist')
 def whitelist():
@@ -1073,6 +1079,7 @@ def removeWhitelist(email):
             wb.close()
     return redirect('/inbox/whitelist')
 
+
 @app.route('/inbox/quarantine')
 def showQuarantine():
     from openpyxl import load_workbook
@@ -1108,6 +1115,7 @@ def model(num):
 
     return redirect("/inbox")
 
+
 @app.route("/logout")
 def logout():
     server.quit()
@@ -1118,5 +1126,5 @@ def logout():
 
 # to run application
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=False)
-    #app.run()
+    # app.run(host='0.0.0.0', port=8080, debug=False)
+    app.run()
