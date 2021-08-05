@@ -2,6 +2,10 @@ import os
 import re
 
 from flask import Flask, render_template, url_for, request, flash, redirect
+# For multi-threading
+import threading
+import time
+import sys
 import imaplib
 # For connection
 import easyimap as e
@@ -19,16 +23,29 @@ import numpy as np
 
 import nltk
 
+
+
 nltk.download('punkt')
 nltk.download('stopwords')
 from nltk import PorterStemmer, word_tokenize
 from nltk.corpus import stopwords
 from functions import mainFunctions
+from mlpfeature import html_exists
+from mlpfeature import count_domain
+from mlpfeature import count_dots
+from mlpfeature import account_exists
+from mlpfeature import paypal_exists
+from mlpfeature import login_exists
+from mlpfeature import bank_exists
 
 # Import function from another python file
 from sklearn.feature_extraction.text import CountVectorizer
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
+
+@app.before_first_request
+def execute_this():
+    threading.Thread(target=thread_testy).start()
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -59,17 +76,18 @@ def login():
             return render_template('index.html', image_file=image_file, loading_gif=loading_gif)
 
     except imaplib.IMAP4.error:
-        '''window = Tk()
-        window.attributes('-topmost', True)
-        window.wm_withdraw()
-        window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
-        tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
-                                     parent=window)'''
-        return render_template('index.html', image_file=image_file)
+        # window = Tk()
+        # window.attributes('-topmost', True)
+        # window.wm_withdraw()
+        # window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
+        # tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
+                                    # parent=window)
+        error = "invalid credentials"
+        return render_template('index.html', image_file=image_file, error=error)
 
 
 ##############################################################################################
-
+#ML Data processing functions
 def cleaning(string):
     string = re.sub("[^0-9a-zA-Z\ ]", "", str(string))
     string = string.lower()
@@ -113,12 +131,27 @@ def email():
     global email_address_list
     global percentage_list
     global result_list
+    global model  # ML Model id 0,1 or 2
+    global model_string # name of model
+
+    # 0-naivebayes, 1-MLP, 2-randomforest
+    wb = load_workbook('model.xlsx')
+    sheet = wb["Sheet1"]  # values will be saved to excel sheet"blacklist"
+    model = sheet['A1'].value
+    print("MODEL should be a number  ", model)
+    wb.close()
+
+    if model == 0:
+        model_string = "Naive Bayes"
+    if model == 1:
+        model_string = "Multilayer Perceptron (MLP)"
+    if model == 2:
+        model_string = "Random Forest"
 
     percentage_list = []
     subject_list = []
     body_list = []
     email_address_list = []
-    date_list = []
     result_list = []
     # Authenticates and retrieves email
 
@@ -419,13 +452,13 @@ def email():
             for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
                 email = server.mail(server.listids()[x])
                 # log.txt file
-                logger.info("----------------------------------------------------------------")
-                logger.info("Email Title:")
-                logger.info(email.title)
-                logger.info("Email from:")
-                logger.info(email.from_addr)
-                logger.info("Message: ")
-                logger.info(email.body)
+                # logger.info("----------------------------------------------------------------")
+                # logger.info("Email Title:")
+                # logger.info(email.title)
+                # logger.info("Email from:")
+                # logger.info(email.from_addr)
+                # logger.info("Message: ")
+                # logger.info(email.body)
 
                 # store email subject, body in list
                 email_address_list.append(email.from_addr)
@@ -433,23 +466,50 @@ def email():
                 body = mainFunctions.content_formatting(email.body)
                 body_list.append(body)
 
+
                 # ML
                 string = body
                 string = cleaning(string)
                 string = stem(string)
                 string = remove_stopwords(string)
 
+                # dataFrame with only the email body
                 n_df = pd.DataFrame({'text': string}, index=[0])
-                n_df.head()
-                vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
-                nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
-                # nbclf = load(r'mlp.joblib')
 
-                x_matrix = vectorizer.transform(n_df['text'])
-                my_prediction = nbclf.predict(x_matrix)
-                percentage = nbclf.predict_proba(x_matrix)
-                # percentage = np.array(percentage)
-                # percentage = ['{:f}'.format(item) for item in percentage]
+                # dataFrame with columns extracted from email
+                mlp_df = pd.DataFrame(columns=['HtmlExists', 'DomainCount', 'DotCount',
+                                               'AccountExists', 'PaypalExists', 'LoginExists', 'BankExists'])
+
+                mlp_df['HtmlExists'] = n_df['text'].apply(html_exists)
+                mlp_df['DomainCount'] = n_df['text'].apply(count_domain)
+                mlp_df['DotCount'] = n_df['text'].apply(count_dots)
+                mlp_df['AccountExists'] = n_df['text'].apply(account_exists)
+                mlp_df['PaypalExists'] = n_df['text'].apply(paypal_exists)
+                mlp_df['LoginExists'] = n_df['text'].apply(login_exists)
+                mlp_df['BankExists'] = n_df['text'].apply(bank_exists)
+                print(mlp_df)
+
+                if model == 0:  # naive bayes
+                    vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
+                    nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
+                    x_matrix = n_df['text']
+                    x_matrix = vectorizer.transform(n_df['text'])
+                    my_prediction = nbclf.predict(x_matrix)
+                    percentage = nbclf.predict_proba(x_matrix)
+                    print(my_prediction, "MY PREDICTION")
+
+                if model == 1:  # MLP
+                    nbclf = load(r'mlp.joblib')
+                    my_prediction = nbclf.predict(mlp_df)
+                    percentage = nbclf.predict_proba(mlp_df)
+                    print(my_prediction, "MY PREDICTION")
+
+                if model == 2:  # Random Forest
+                    nbclf = load(r'randomforest.joblib')
+                    my_prediction = nbclf.predict(mlp_df)
+                    percentage = nbclf.predict_proba(mlp_df)
+                    print(my_prediction, "MY PREDICTION")
+
                 np.set_printoptions(formatter={'float_kind': '{:f}'.format})
 
                 if my_prediction == 1:
@@ -465,8 +525,8 @@ def email():
                     percentage = str(percentage) + '%'
                     percentage_list.append(percentage)
 
-                logger.info("Email attachment: ")
-                logger.info(email.attachments)
+                # logger.info("Email attachment: ")
+                # logger.info(email.attachments)
                 emailAttachment = email.attachments
                 if not emailAttachment:
                     emailAttach = "-"
@@ -486,6 +546,9 @@ def email():
                 emailValidResult = mainFunctions.email_valid(email.from_addr)
                 attachmentResult = mainFunctions.attachment_check(emailAttach)
                 linkResult = mainFunctions.check_link(email.body)
+                print("Email valid: ", emailValidResult)
+                print("attachment check: ", attachmentResult)
+                print("Link Check: ", linkResult)
 
                 # compile result
                 if spellingResult:
@@ -639,13 +702,13 @@ def email():
         for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
             email = server.mail(server.listids()[x])
             # log.txt file
-            logger.info("----------------------------------------------------------------")
-            logger.info("Email Title:")
-            logger.info(email.title)
-            logger.info("Email from:")
-            logger.info(email.from_addr)
-            logger.info("Message: ")
-            logger.info(email.body)
+            # logger.info("----------------------------------------------------------------")
+            # logger.info("Email Title:")
+            # logger.info(email.title)
+            # logger.info("Email from:")
+            # logger.info(email.from_addr)
+            # logger.info("Message: ")
+            # logger.info(email.body)
 
             # store email subject, body in list
             email_address_list.append(email.from_addr)
@@ -653,21 +716,50 @@ def email():
             body = mainFunctions.content_formatting(email.body)
             body_list.append(body)
 
+
             # ML
             string = body
             string = cleaning(string)
             string = stem(string)
             string = remove_stopwords(string)
 
+            # dataFrame with only the email body
             n_df = pd.DataFrame({'text': string}, index=[0])
-            n_df.head()
-            vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
-            nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
-            # nbclf = load(r'mlp.joblib')
 
-            x_matrix = vectorizer.transform(n_df['text'])
-            my_prediction = nbclf.predict(x_matrix)
-            percentage = nbclf.predict_proba(x_matrix)
+            # dataFrame with columns extracted from email
+            mlp_df = pd.DataFrame(columns=['HtmlExists', 'DomainCount', 'DotCount',
+                                           'AccountExists', 'PaypalExists', 'LoginExists', 'BankExists'])
+
+            mlp_df['HtmlExists'] = n_df['text'].apply(html_exists)
+            mlp_df['DomainCount'] = n_df['text'].apply(count_domain)
+            mlp_df['DotCount'] = n_df['text'].apply(count_dots)
+            mlp_df['AccountExists'] = n_df['text'].apply(account_exists)
+            mlp_df['PaypalExists'] = n_df['text'].apply(paypal_exists)
+            mlp_df['LoginExists'] = n_df['text'].apply(login_exists)
+            mlp_df['BankExists'] = n_df['text'].apply(bank_exists)
+            print(mlp_df)
+
+            if model == 0:  # naive bayes
+                vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
+                nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
+                x_matrix = n_df['text']
+                x_matrix = vectorizer.transform(n_df['text'])
+                my_prediction = nbclf.predict(x_matrix)
+                percentage = nbclf.predict_proba(x_matrix)
+                print(my_prediction, "MY PREDICTION")
+
+            if model == 1:  # MLP
+                nbclf = load(r'mlp.joblib')
+                my_prediction = nbclf.predict(mlp_df)
+                percentage = nbclf.predict_proba(mlp_df)
+                print(my_prediction, "MY PREDICTION")
+
+            if model == 2:  # Random Forest
+                nbclf = load(r'randomforest.joblib')
+                my_prediction = nbclf.predict(mlp_df)
+                percentage = nbclf.predict_proba(mlp_df)
+                print(my_prediction, "MY PREDICTION")
+
             # percentage = np.array(percentage)
             # percentage = ['{:f}'.format(item) for item in percentage]
             np.set_printoptions(formatter={'float_kind': '{:f}'.format})
@@ -685,8 +777,8 @@ def email():
                 percentage = str(percentage) + '%'
                 percentage_list.append(percentage)
 
-            logger.info("Email attachment: ")
-            logger.info(email.attachments)
+            # logger.info("Email attachment: ")
+            # logger.info(email.attachments)
             emailAttachment = email.attachments
             if not emailAttachment:
                 emailAttach = "-"
@@ -706,6 +798,9 @@ def email():
             emailValidResult = mainFunctions.email_valid(email.from_addr)
             attachmentResult = mainFunctions.attachment_check(emailAttach)
             linkResult = mainFunctions.check_link(email.body)
+            print("Email valid: ", emailValidResult)
+            print("attachment check: ", attachmentResult)
+            print("Link Check: ", linkResult)
 
             # compile result
             if spellingResult:
@@ -829,25 +924,34 @@ def email():
     server.starttls()  # secure connection
     return render_template("inbox.html", len=len(subject_list), subject=subject_list,
                            address=email_address_list, body=body_list,
-                           result_list=result_list, percentage_list=percentage_list)
+                           result_list=result_list, percentage_list=percentage_list, model_string=model_string)
 
 
 @app.route('/inbox/<num>')
 def showEmail(num):
     getresult = result_list[int(num)]
     getpercentage = percentage_list[int(num)]
+    specific_subject = subject_list[int(num)]
+    specific_address = email_address_list[int(num)]
+    specific_body = body_list[int(num)]
+    print(specific_subject)
 
     return render_template("inbox1.html", len=len(subject_list), subject=subject_list,
                            address=email_address_list, body=body_list, num=num,
-                           result=getresult, percentage=getpercentage)
+                           result=getresult, percentage=getpercentage,
+                           specific_body=specific_body, specific_subject=specific_subject,
+                           specific_address=specific_address, model_string=model_string
+                           )
 
 
 @app.route('/inbox/blacklist')
 def blacklist():
+    global blacklist
+    blacklist = []
     wb = load_workbook('blacklist.xlsx')
     sheet = wb["blacklist"]
     row_count = sheet.max_row
-    list = []  # nested list of email address and status
+    # nested list of email address and status
     # nested list will look like this in the end [[email,status], [email1,status1], [email2,status2]]
     for i in range(1, row_count + 1):
         for k in range(1, 3):
@@ -858,9 +962,9 @@ def blacklist():
             if k == 2:
                 status = sheet.cell(row=i, column=k).value
                 list1.append(status)
-                list.append(list1)
+                blacklist.append(list1)
 
-    return render_template("blacklist.html", list=list)
+    return render_template("blacklist.html", list=blacklist)
 
 
 @app.route('/inbox/blacklist/new', methods=['GET', 'POST'])
@@ -894,6 +998,24 @@ def blacklistnew():
     else:
         return render_template("blacklistnew.html")
 
+@app.route('/inbox/blacklist/remove/<email>')
+def removeBlacklist(email):
+    wb = load_workbook('blacklist.xlsx')
+    sheet = wb["blacklist"]  # excel sheet"blacklist"
+    row_count = sheet.max_row
+    k = 1
+    print("This is email: ", email)
+
+    # itterate rows in excel sheet
+    for i in range(1, row_count + 1):
+        emailadd = sheet.cell(row=i, column=k).value
+        print(emailadd)
+        if emailadd == email:
+            row_number = i
+            sheet.delete_rows(i, 1)
+            wb.save('blacklist.xlsx')
+            wb.close()
+    return redirect('/inbox/blacklist')
 
 @app.route('/inbox/whitelist')
 def whitelist():
@@ -948,11 +1070,30 @@ def whitelistnew():
         return render_template("whitelistnew.html")
 
 
+@app.route('/inbox/whitelist/remove/<email>')
+def removeWhitelist(email):
+    print("This is email: ", email)
+    wb = load_workbook('whitelist.xlsx')
+    sheet = wb["whitelist"]  # excel sheet"blacklist"
+    row_count = sheet.max_row
+    k = 1
+
+    # itterate rows in excel sheet
+    for i in range(1, row_count + 1):
+        emailadd = sheet.cell(row=i, column=k).value
+        print(emailadd)
+        if emailadd == email:
+            row_number = i
+            sheet.delete_rows(i, 1)
+            wb.save('whitelist.xlsx')
+            wb.close()
+    return redirect('/inbox/whitelist')
+
 @app.route('/inbox/quarantine')
 def showQuarantine():
     from openpyxl import load_workbook
     wb = load_workbook('logs.xlsx')
-    ws = wb["Sheet1"]
+    ws = wb[username]
     percentageList = []
     subjectList = []
     bodyList = []
@@ -969,10 +1110,49 @@ def showQuarantine():
 
     return render_template("quarantine.html", len=len(subjectList), subject=subjectList,
                            address=emailAddressList, body=bodyList,
-                           result_list=resultList, percentage_list=percentageList)
+                           result_list=resultList, percentage_list=percentageList, model_string=model_string)
 
+
+@app.route('/model/<int:num>')
+def model(num):
+    wb = load_workbook('model.xlsx')
+    sheet = wb["Sheet1"]  # values will be saved to excel sheet"blacklist"
+    sheet['A1'] = num
+
+    wb.save('model.xlsx')
+    wb.close()
+
+    return redirect("/inbox")
+
+@app.route("/logout")
+def logout():
+    server.quit()
+    username = None
+    password = None
+    return redirect("/")
+
+##########################################################################################################################
+# Multi-Threading
+@app.route('/thread-test')
+def thread_test():
+    global test_result
+    return test_result
+
+def thread_testy():
+    time.sleep(10)
+    print('Thread is printing to console')
+    sys.stdout.flush()
+    global test_result
+    test_result = 'passed'
+    return
+
+def start_app():
+    threading.Thread(target=app.run).start()
+
+##########################################################################################################################
 
 # to run application
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080, debug=False)
+    # app.run(host='0.0.0.0', port=8080, debug=False)
     # app.run()
+    start_app() #Multi-threading start
