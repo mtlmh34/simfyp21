@@ -2,10 +2,6 @@ import os
 import re
 
 from flask import Flask, render_template, url_for, request, flash, redirect
-# For multi-threading
-import threading
-import time
-import sys
 import imaplib
 # For connection
 import easyimap as e
@@ -18,12 +14,10 @@ import pandas as pd
 from joblib import dump, load
 import numpy as np
 # import tkinter
-# from tkinter import *
-# import tkinter.messagebox
+#from tkinter import *
+#import tkinter.messagebox
 
 import nltk
-
-
 
 nltk.download('punkt')
 nltk.download('stopwords')
@@ -41,11 +35,7 @@ from mlpfeature import bank_exists
 # Import function from another python file
 from sklearn.feature_extraction.text import CountVectorizer
 
-app = Flask(__name__, static_url_path='')
-
-@app.before_first_request
-def execute_this():
-    threading.Thread(target=thread_testy).start()
+app = Flask(__name__)
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -1131,28 +1121,8 @@ def logout():
     password = None
     return redirect("/")
 
-##########################################################################################################################
-# Multi-Threading
-@app.route('/thread-test')
-def thread_test():
-    global test_result
-    return test_result
-
-def thread_testy():
-    time.sleep(10)
-    print('Thread is printing to console')
-    sys.stdout.flush()
-    global test_result
-    test_result = 'passed'
-    return
-
-def start_app():
-    threading.Thread(target=app.run).start()
-
-##########################################################################################################################
 
 # to run application
 if __name__ == '__main__':
     # app.run(host='0.0.0.0', port=8080, debug=False)
-    # app.run()
-    start_app() #Multi-threading start
+    app.run()
