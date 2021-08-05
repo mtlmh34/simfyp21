@@ -14,8 +14,8 @@ import pandas as pd
 from joblib import dump, load
 import numpy as np
 # import tkinter
-from tkinter import *
-import tkinter.messagebox
+#from tkinter import *
+#import tkinter.messagebox
 
 import nltk
 
@@ -71,13 +71,13 @@ def login():
         # window.wm_withdraw()
         # window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
         # tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
-        # parent=window)
+                                    # parent=window)
         error = "invalid credentials"
         return render_template('index.html', image_file=image_file, error=error)
 
 
 ##############################################################################################
-# ML Data processing functions
+#ML Data processing functions
 def cleaning(string):
     string = re.sub("[^0-9a-zA-Z\ ]", "", str(string))
     string = string.lower()
@@ -122,7 +122,7 @@ def email():
     global percentage_list
     global result_list
     global model  # ML Model id 0,1 or 2
-    global model_string  # name of model
+    global model_string # name of model
 
     # 0-naivebayes, 1-MLP, 2-randomforest
     wb = load_workbook('model.xlsx')
@@ -456,6 +456,7 @@ def email():
                 body = mainFunctions.content_formatting(email.body)
                 body_list.append(body)
 
+
                 # ML
                 string = body
                 string = cleaning(string)
@@ -704,6 +705,7 @@ def email():
             subject_list.append(email.title)
             body = mainFunctions.content_formatting(email.body)
             body_list.append(body)
+
 
             # ML
             string = body
@@ -986,7 +988,6 @@ def blacklistnew():
     else:
         return render_template("blacklistnew.html")
 
-
 @app.route('/inbox/blacklist/remove/<email>')
 def removeBlacklist(email):
     wb = load_workbook('blacklist.xlsx')
@@ -1005,7 +1006,6 @@ def removeBlacklist(email):
             wb.save('blacklist.xlsx')
             wb.close()
     return redirect('/inbox/blacklist')
-
 
 @app.route('/inbox/whitelist')
 def whitelist():
@@ -1079,7 +1079,6 @@ def removeWhitelist(email):
             wb.close()
     return redirect('/inbox/whitelist')
 
-
 @app.route('/inbox/quarantine')
 def showQuarantine():
     from openpyxl import load_workbook
@@ -1114,7 +1113,6 @@ def model(num):
     wb.close()
 
     return redirect("/inbox")
-
 
 @app.route("/logout")
 def logout():
