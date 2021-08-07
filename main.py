@@ -2,6 +2,7 @@ import os
 import re
 
 from flask import Flask, render_template, url_for, request, flash, redirect
+
 import imaplib
 # For connection
 import easyimap as e
@@ -13,11 +14,10 @@ from openpyxl import load_workbook
 import pandas as pd
 from joblib import dump, load
 import numpy as np
-# import tkinter
-#from tkinter import *
-#import tkinter.messagebox
 
 import nltk
+
+
 
 nltk.download('punkt')
 nltk.download('stopwords')
@@ -66,12 +66,6 @@ def login():
             return render_template('index.html', image_file=image_file, loading_gif=loading_gif)
 
     except imaplib.IMAP4.error:
-        # window = Tk()
-        # window.attributes('-topmost', True)
-        # window.wm_withdraw()
-        # window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
-        # tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
-                                    # parent=window)
         error = "invalid credentials"
         return render_template('index.html', image_file=image_file, error=error)
 
@@ -219,9 +213,9 @@ def email():
                     excelRow += 1
                     wb.save("logs.xlsx")
 
-            '''else:  # user have no new email
+            else:  # user have no new email
                 print("Finding new email")
-                checkTitle = ws["A2"].value
+                '''checkTitle = ws["A2"].value
                 checkAddr = ws["B2"].value
                 # server = e.connect(imap_url, username, password)
                 # inbox = server.listids()
@@ -285,7 +279,7 @@ def email():
                         functionResult = 100
                         emailConFormat = mainFunctions.content_formatting(email.body)
                         # spellingResult = mainFunctions.spelling_check(emailConFormat)
-                        spellingResult = mainFunctions.spelling_check(str(email.title))
+                        # spellingResult = mainFunctions.spelling_check(str(email.title))
                         emailValidResult = mainFunctions.email_valid(email.from_addr)
                         attachmentResult = mainFunctions.attachment_check(emailAttach)
                         linkResult = mainFunctions.check_link(email.body)
@@ -532,7 +526,7 @@ def email():
                 functionResult = 100
                 emailConFormat = mainFunctions.content_formatting(email.body)
                 # spellingResult = mainFunctions.spelling_check(emailConFormat)
-                spellingResult = mainFunctions.spelling_check(str(email.title))
+                # spellingResult = mainFunctions.spelling_check(str(email.title))
                 emailValidResult = mainFunctions.email_valid(email.from_addr)
                 attachmentResult = mainFunctions.attachment_check(emailAttach)
                 linkResult = mainFunctions.check_link(email.body)
@@ -541,8 +535,8 @@ def email():
                 print("Link Check: ", linkResult)
 
                 # compile result
-                if spellingResult:
-                    functionResult -= 25
+                # if spellingResult:
+                #    functionResult -= 25
                 if emailValidResult:
                     functionResult -= 25
                 if attachmentResult:
@@ -784,7 +778,7 @@ def email():
             functionResult = 100
             emailConFormat = mainFunctions.content_formatting(email.body)
             # spellingResult = mainFunctions.spelling_check(emailConFormat)
-            spellingResult = mainFunctions.spelling_check(str(email.title))
+            # spellingResult = mainFunctions.spelling_check(str(email.title))
             emailValidResult = mainFunctions.email_valid(email.from_addr)
             attachmentResult = mainFunctions.attachment_check(emailAttach)
             linkResult = mainFunctions.check_link(email.body)
@@ -793,8 +787,8 @@ def email():
             print("Link Check: ", linkResult)
 
             # compile result
-            if spellingResult:
-                functionResult -= 25
+            # if spellingResult:
+            #    functionResult -= 25
             if emailValidResult:
                 functionResult -= 25
             if attachmentResult:
@@ -939,7 +933,14 @@ def blacklist():
     global blacklist
     blacklist = []
     wb = load_workbook('blacklist.xlsx')
-    sheet = wb["blacklist"]
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["blacklist"]).title = username
+        wb.save('blacklist.xlsx')
+        sheet = wb[username]
+
     row_count = sheet.max_row
     # nested list of email address and status
     # nested list will look like this in the end [[email,status], [email1,status1], [email2,status2]]
@@ -954,13 +955,21 @@ def blacklist():
                 list1.append(status)
                 blacklist.append(list1)
 
+
     return render_template("blacklist.html", list=blacklist)
 
 
 @app.route('/inbox/blacklist/new', methods=['GET', 'POST'])
 def blacklistnew():
     wb = load_workbook('blacklist.xlsx')
-    sheet = wb["blacklist"]  # values will be saved to excel sheet"blacklist"
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["blacklist"]).title = username
+        wb.save('blacklist.xlsx')
+        sheet = wb[username]
+    # sheet = wb["blacklist"]  # values will be saved to excel sheet"blacklist"
     col2 = 'blacklisted'  # value of 2nd column in excel
     if request.method == 'POST':
         email1 = request.form['email1']  # id='email1' from html form
@@ -991,7 +1000,14 @@ def blacklistnew():
 @app.route('/inbox/blacklist/remove/<email>')
 def removeBlacklist(email):
     wb = load_workbook('blacklist.xlsx')
-    sheet = wb["blacklist"]  # excel sheet"blacklist"
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["blacklist"]).title = username
+        wb.save('blacklist.xlsx')
+        sheet = wb[username]
+    # sheet = wb["blacklist"]  # excel sheet"blacklist"
     row_count = sheet.max_row
     k = 1
     print("This is email: ", email)
@@ -1010,7 +1026,14 @@ def removeBlacklist(email):
 @app.route('/inbox/whitelist')
 def whitelist():
     wb = load_workbook('whitelist.xlsx')
-    sheet = wb["whitelist"]
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["whitelist"]).title = username
+        wb.save('whitelist.xls')
+        sheet = wb[username]
+
     row_count = sheet.max_row
     list = []  # nested list of email address and status
     # nested list will look like this in the end [[email,status], [email1,status1], [email2,status2]]
@@ -1031,7 +1054,14 @@ def whitelist():
 @app.route('/inbox/whitelist/new', methods=['GET', 'POST'])
 def whitelistnew():
     wb = load_workbook('whitelist.xlsx')
-    sheet = wb["whitelist"]  # values will be saved to excel sheet"whitelist"
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["whitelist"]).title = username
+        wb.save('whitelist.xls')
+        sheet = wb[username]
+
     col2 = 'whitelisted'  # value of 2nd column in excel
     if request.method == 'POST':
         email1 = request.form['email1']  # id='email1' from html form
@@ -1064,7 +1094,14 @@ def whitelistnew():
 def removeWhitelist(email):
     print("This is email: ", email)
     wb = load_workbook('whitelist.xlsx')
-    sheet = wb["whitelist"]  # excel sheet"blacklist"
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["whitelist"]).title = username
+        wb.save('whitelist.xls')
+        sheet = wb[username]
+
     row_count = sheet.max_row
     k = 1
 
@@ -1124,5 +1161,5 @@ def logout():
 
 # to run application
 if __name__ == '__main__':
-    # app.run(host='0.0.0.0', port=8080, debug=False)
-    app.run()
+    app.run(host='0.0.0.0', port=8080, debug=False)
+    #app.run()
