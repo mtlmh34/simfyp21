@@ -18,67 +18,6 @@ from bs4 import BeautifulSoup
 
 
 class mainFunctions:
-    '''
-    @staticmethod
-    def malware_check():
-        # Check if contain malware #
-        # Identify specified folder with suspect files
-        file_path = os.path.join("logs.xlsx")
-
-        # Open XLSX file for writing
-        excel = xlsxwriter.Workbook("malware_check.xlsx")
-        bold = excel.add_format({'bold': True})
-        worksheet = excel.add_worksheet()
-
-        # Write column headings
-        row = 0
-        worksheet.write('A1', 'SHA256', bold)
-        worksheet.write('B1', 'Imphash', bold)
-        row += 1
-
-        # Iterate through file_list to calculate imphash and sha256 file hash
-        # Get sha256
-        fh = open(file_path, "rb")
-        data = fh.read()
-        fh.close()
-        sha256 = hashlib.sha256(data).hexdigest()
-
-        # Get import table hash
-        try:
-            pe = pefile.PE(file_path)
-            ihash = pe.get_imphash()
-
-            # Write hashes to doc
-            worksheet.write(row, 0, sha256)
-            worksheet.write(row, 1, ihash)
-            row += 1
-
-            # Autofilter the xlsx file for easy viewing/sorting
-            worksheet.autofilter(0, 0, row, 2)
-            worksheet.close()
-
-        except pefile.PEFormatError:
-            errorMsg = "No malware detected!"
-            worksheet.write(row, 0, errorMsg)
-            worksheet.write(row, 1, errorMsg)
-            row += 1
-        excel.close()
-    '''
-
-    def spelling_check(self):
-        # Function to check if there is any spelling mistake #
-        # import TextBlob
-        from textblob import TextBlob
-        from openpyxl import Workbook, load_workbook
-
-        misspell_word = self
-        textBlb = TextBlob(misspell_word)
-        textCorrect = textBlb.correct()
-        if misspell_word != textCorrect:
-            # print(misspell_word, " || ", textCorrect)
-            return True
-        else:
-            return False
 
     def email_valid(self):
         # Function to check if email address is legitimate
@@ -130,13 +69,17 @@ class mainFunctions:
             # return data by retrieving the tag content
             return ' '.join(soup.stripped_strings)
 
-        HTML_DOC = self
-        if not HTML_DOC:
-            print("Empty")
-        else:
-            display = remove_tags(HTML_DOC)
-            mystring = display.replace("_x000D_", " ")
-            return mystring
+        try:
+            HTML_DOC = self
+            if not HTML_DOC:
+                print("Empty")
+            else:
+                display = remove_tags(HTML_DOC)
+                mystring = display.replace("_x000D_", "\n")
+                mstring = mystring.replace("\n", "\x0A")
+                return mstring
+        except:
+            return self
 
     def check_link(self):
 

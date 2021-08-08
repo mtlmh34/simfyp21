@@ -17,8 +17,6 @@ import numpy as np
 
 import nltk
 
-
-
 nltk.download('punkt')
 nltk.download('stopwords')
 from nltk import PorterStemmer, word_tokenize
@@ -158,13 +156,6 @@ def email():
             email = server.mail(server.listids()[0])
             ws = wb[username]
             excelRow = 2
-            '''test = ws["A2"].value
-            test = test.strip()
-            test1 = email.title
-            test1 = test1.strip(test1)
-            for a, b in zip(test, test1):
-                if a != b:
-                    print(a + b)'''
             if ws["A2"].value == email.title and ws["B2"].value == email.from_addr:
                 print("This is working")
                 for x in range(1, ws.max_row):
@@ -214,165 +205,8 @@ def email():
                     wb.save("logs.xlsx")
 
             else:  # user have no new email
-                print("Finding new email")
-                '''checkTitle = ws["A2"].value
-                checkAddr = ws["B2"].value
-                # server = e.connect(imap_url, username, password)
-                # inbox = server.listids()
-                for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
-                    email = server.mail(server.listids()[x])
-                    if checkTitle == email.title and checkAddr == email.from_addr:
-                        break
-                    else:
-                        # log.txt file
-                        logger.info("----------------------------------------------------------------")
-                        logger.info("Email Title:")
-                        logger.info(email.title)
-                        logger.info("Email from:")
-                        logger.info(email.from_addr)
-                        logger.info("Message: ")
-                        logger.info(email.body)
+                print("no new email found")
 
-                        string = email.body
-                        string = cleaning(string)
-                        string = stem(string)
-                        string = remove_stopwords(string)
-
-                        # ML
-                        n_df = pd.DataFrame({'text': string}, index=[0])
-                        n_df.head()
-                        vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
-                        nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
-
-                        x_matrix = vectorizer.transform(n_df['text'])
-                        my_prediction = nbclf.predict(x_matrix)
-                        percentage = nbclf.predict_proba(x_matrix)
-                        # percentage = np.array(percentage)
-                        # percentage = ['{:f}'.format(item) for item in percentage]
-                        np.set_printoptions(formatter={'float_kind': '{:f}'.format})
-
-                        if my_prediction == 1:
-                            ml_result = 'Phishing'
-                            percentage = format(percentage[0][1], '.12f')  # to 12decimal place
-                            percentage = float(percentage) * 100  # convert to percent
-                            percentage = str(percentage) + '%'
-                        elif my_prediction == 0:
-                            ml_result = 'Non-Phishing'
-                            percentage = format(percentage[0][0], '.12f')  # to 12decimal place
-                            percentage = float(percentage) * 100  # convert to percent
-                            percentage = str(percentage) + '%'
-
-                        logger.info("Email attachment: ")
-                        logger.info(email.attachments)
-                        emailAttachment = email.attachments
-                        if not emailAttachment:
-                            emailAttach = "-"
-                        else:
-                            attachment = emailAttachment[0]
-                            attachment = str(attachment)
-                            attach = attachment.split(',')
-                            emailAttach = str(attach[0])
-                            emailAttach = emailAttach[1:]
-                        logger.info("----------------------------------------------------------------")
-
-                        # Run function and counter check with ML result
-                        functionResult = 100
-                        emailConFormat = mainFunctions.content_formatting(email.body)
-                        # spellingResult = mainFunctions.spelling_check(emailConFormat)
-                        # spellingResult = mainFunctions.spelling_check(str(email.title))
-                        emailValidResult = mainFunctions.email_valid(email.from_addr)
-                        attachmentResult = mainFunctions.attachment_check(emailAttach)
-                        linkResult = mainFunctions.check_link(email.body)
-
-                        function_indi = " || "
-                        # compile result
-                        if spellingResult:
-                            functionResult -= 25
-                            function_indi += " A"
-                        else:
-                            function_indi += " 0"
-
-                        if emailValidResult:
-                            functionResult -= 25
-                            function_indi += " B"
-                        else:
-                            function_indi += " 0"
-
-                        if attachmentResult:
-                            functionResult -= 25
-                            function_indi += " C"
-                        else:
-                            function_indi += " 0"
-
-                        if linkResult:
-                            functionResult -= 25
-                            function_indi += " D"
-                        else:
-                            function_indi += " 0"
-
-                        if functionResult > 50:
-                            function_result = 'Phishing'
-                        else:
-                            function_result = 'Non-Phishing'
-
-                        # counter check
-                        if function_result == ml_result:
-                            result = ml_result
-                        else:
-                            result = 'Suspicious'
-
-                        # Extra just to check
-                        function_result = function_result + " || " + str(functionResult) + function_indi
-                        # insert row in excel
-                        ws.insert_rows(2)
-                        # excel file
-                        excelColumn = 'A'
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = email.title
-                        print(excelPosition)
-
-                        excelColumn = chr(ord(excelColumn) + 1)
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = email.from_addr
-                        print(excelPosition)
-
-                        excelColumn = chr(ord(excelColumn) + 1)
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = emailConFormat
-                        print(excelPosition)
-
-                        excelColumn = chr(ord(excelColumn) + 1)
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = "-"
-                        print(excelPosition)
-
-                        excelColumn = chr(ord(excelColumn) + 1)
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = result
-                        print(excelPosition)
-
-                        excelColumn = chr(ord(excelColumn) + 1)
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = emailAttach
-                        print(excelPosition)
-
-                        excelColumn = chr(ord(excelColumn) + 1)
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = ml_result
-                        print(excelPosition)
-
-                        excelColumn = chr(ord(excelColumn) + 1)
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = function_result
-                        print(excelPosition)
-
-                        excelColumn = chr(ord(excelColumn) + 1)
-                        excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = percentage
-                        print(excelPosition)
-
-                        excelRow += 1
-                        # wb.save("logs.xlsx")'''
             # wb.save("logs.xlsx")
             # load into list for web
             wb = load_workbook("logs.xlsx")
@@ -435,15 +269,6 @@ def email():
             # inbox = server.listids()
             for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
                 email = server.mail(server.listids()[x])
-                # log.txt file
-                # logger.info("----------------------------------------------------------------")
-                # logger.info("Email Title:")
-                # logger.info(email.title)
-                # logger.info("Email from:")
-                # logger.info(email.from_addr)
-                # logger.info("Message: ")
-                # logger.info(email.body)
-
                 # store email subject, body in list
                 email_address_list.append(email.from_addr)
                 subject_list.append(email.title)
@@ -523,10 +348,8 @@ def email():
                 logger.info("----------------------------------------------------------------")
 
                 # Run function and counter check with ML result
-                functionResult = 100
+                functionResult = 0
                 emailConFormat = mainFunctions.content_formatting(email.body)
-                # spellingResult = mainFunctions.spelling_check(emailConFormat)
-                # spellingResult = mainFunctions.spelling_check(str(email.title))
                 emailValidResult = mainFunctions.email_valid(email.from_addr)
                 attachmentResult = mainFunctions.attachment_check(emailAttach)
                 linkResult = mainFunctions.check_link(email.body)
@@ -535,27 +358,19 @@ def email():
                 print("Link Check: ", linkResult)
 
                 # compile result
-                # if spellingResult:
-                #    functionResult -= 25
                 if emailValidResult:
-                    functionResult -= 25
+                    functionResult += 25
                 if attachmentResult:
-                    functionResult -= 25
+                    functionResult += 25
                 if linkResult:
-                    functionResult -= 25
+                    functionResult += 50
 
-                if functionResult > 50:
+                if functionResult >= 50:
                     function_result = 'Phishing'
                 else:
                     function_result = 'Non-Phishing'
 
-                # counter check
-                if function_result == ml_result:
-                    result = ml_result
-                else:
-                    result = 'Suspicious'
-
-                result_list.append(result)
+                result_list.append(ml_result)
 
                 # excel file titles
                 excelColumn1 = 'A1'
@@ -612,6 +427,8 @@ def email():
                 # ws.write(excelPosition9, "Percentage")
                 print(excelPosition9)
 
+
+
                 # excel file
                 excelColumn = 'A'
                 excelPosition = excelColumn + str(excelRow)
@@ -639,7 +456,7 @@ def email():
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                ws[excelPosition] = result
+                ws[excelPosition] = ml_result
                 # ws.write(excelPosition, result)
                 print(excelPosition)
 
@@ -684,15 +501,8 @@ def email():
         email = server.mail(server.listids()[0])
 
         for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
+        # for x in range(0, 5):
             email = server.mail(server.listids()[x])
-            # log.txt file
-            # logger.info("----------------------------------------------------------------")
-            # logger.info("Email Title:")
-            # logger.info(email.title)
-            # logger.info("Email from:")
-            # logger.info(email.from_addr)
-            # logger.info("Message: ")
-            # logger.info(email.body)
 
             # store email subject, body in list
             email_address_list.append(email.from_addr)
@@ -777,8 +587,6 @@ def email():
             # Run function and counter check with ML result
             functionResult = 100
             emailConFormat = mainFunctions.content_formatting(email.body)
-            # spellingResult = mainFunctions.spelling_check(emailConFormat)
-            # spellingResult = mainFunctions.spelling_check(str(email.title))
             emailValidResult = mainFunctions.email_valid(email.from_addr)
             attachmentResult = mainFunctions.attachment_check(emailAttach)
             linkResult = mainFunctions.check_link(email.body)
@@ -787,27 +595,19 @@ def email():
             print("Link Check: ", linkResult)
 
             # compile result
-            # if spellingResult:
-            #    functionResult -= 25
             if emailValidResult:
-                functionResult -= 25
+                functionResult += 25
             if attachmentResult:
-                functionResult -= 25
+                functionResult += 25
             if linkResult:
-                functionResult -= 25
+                functionResult += 50
 
-            if functionResult > 50:
+            if functionResult >= 50:
                 function_result = 'Phishing'
             else:
                 function_result = 'Non-Phishing'
 
-            # counter check
-            if function_result == ml_result:
-                result = ml_result
-            else:
-                result = 'Suspicious'
-
-            result_list.append(result)
+            result_list.append(ml_result)
 
             # excel file titles
             excelColumn1 = 'A1'
@@ -878,7 +678,7 @@ def email():
 
             excelColumn = chr(ord(excelColumn) + 1)
             excelPosition = excelColumn + str(excelRow)
-            worksheet.write(excelPosition, result)
+            worksheet.write(excelPosition, ml_result)
             print(excelPosition)
 
             excelColumn = chr(ord(excelColumn) + 1)
@@ -906,8 +706,9 @@ def email():
     server = smtplib.SMTP('smtp.gmail.com', 587)  # smtp settings, change accordingly.
     server.ehlo()
     server.starttls()  # secure connection
+    bodyList = body_list[0].replace("_x000D_", "")
     return render_template("inbox.html", len=len(subject_list), subject=subject_list,
-                           address=email_address_list, body=body_list,
+                           address=email_address_list, body=bodyList,
                            result_list=result_list, percentage_list=percentage_list, model_string=model_string)
 
 
@@ -919,6 +720,7 @@ def showEmail(num):
     specific_address = email_address_list[int(num)]
     specific_body = body_list[int(num)]
     print(specific_subject)
+    specific_body = specific_body.replace("_x000D_", "")
 
     return render_template("inbox1.html", len=len(subject_list), subject=subject_list,
                            address=email_address_list, body=body_list, num=num,
@@ -1121,6 +923,12 @@ def showQuarantine():
     from openpyxl import load_workbook
     wb = load_workbook('logs.xlsx')
     ws = wb[username]
+    global percentageList
+    global subjectList
+    global bodyList
+    global emailAddressList
+    global resultList
+
     percentageList = []
     subjectList = []
     bodyList = []
@@ -1128,17 +936,32 @@ def showQuarantine():
     resultList = []
 
     for row in ws.rows:
-        if row[4].value == "Suspicious":
+        if row[4].value == "Phishing":
             subjectList.append(row[0].value)
             emailAddressList.append(row[1].value)
             bodyList.append(row[2].value)
             resultList.append(row[4].value)
             percentageList.append(row[8].value)
-
+    bodylist = bodyList[0].replace("_x000D_", "")
     return render_template("quarantine.html", len=len(subjectList), subject=subjectList,
-                           address=emailAddressList, body=bodyList,
+                           address=emailAddressList, body=bodylist,
                            result_list=resultList, percentage_list=percentageList, model_string=model_string)
 
+@app.route('/inbox/quarantine/<num>')
+def showSuspicious(num):
+    getresult = resultList[int(num)]
+    getpercentage = percentageList[int(num)]
+    specific_subject = subjectList[int(num)]
+    specific_address = emailAddressList[int(num)]
+    specific_body = bodyList[int(num)]
+    specific_body = specific_body.replace("_x000D_", "")
+
+    return render_template("quarantine1.html", len=len(subjectList), subject=subjectList,
+                           address=emailAddressList, num=num, model_string=model_string,
+                           result=getresult, percentage=getpercentage,
+                           specific_body=specific_body, specific_subject=specific_subject,
+                           specific_address=specific_address
+                           )
 
 @app.route('/model/<int:num>')
 def model(num):

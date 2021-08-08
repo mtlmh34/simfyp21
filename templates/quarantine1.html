@@ -22,7 +22,7 @@
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                             <polyline points="22,6 12,13 2,6"></polyline>
                         </svg>
-                        <a href=" {{ url_for('email') }} ">Inbox</a>
+                        <a href="{{ url_for('email') }}">Inbox</a>
                         <span class="badge badge-sb-base"></span>
                     </li>
 
@@ -104,13 +104,13 @@
         <div class="email-desc-wrapper">
             <div class="email-header">
                 <button type="button" class="btn btn-primary">
-                    {{ result_list[0] }} <span class="badge bg-secondary">{{ percentage_list[0] }}</span>
+                    {{ result }} <span class="badge bg-secondary">{{ percentage }}</span>
                 </button>
-                <div class="email-subject"> {{subject[0]}} </div>
-                <p class="recipient"><span>From:</span> {{address[0]}} </p>
+                <div class="email-subject"> {{ specific_subject }} </div>
+                <p class="recipient"><span>From:</span> {{ specific_address }} </p>
             </div>
             <div class="email-body">
-                <pre>{{body}} </pre>
+                <pre>{{ specific_body }} </pre>
             </div>
         </div>
     </div>
