@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>bs4 email app - Bootdey.com</title>
+    <title>MisterPhilter</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
 	<script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -17,16 +17,16 @@
             <div class="toolbar-body">
                 <div class="toolbar-title">Folders</div>
                 <ul class="toolbar-menu">
-                    <li class="active">
+                    <li>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mail">
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                             <polyline points="22,6 12,13 2,6"></polyline>
                         </svg>
-                        <a href="#">Inbox</a>
-                        <span class="badge badge-sb-base">10</span>
+                        <a href=" {{ url_for('email') }} ">Inbox</a>
+                        <span class="badge badge-sb-base"></span>
                     </li>
 
-                    <li>
+                    <li class="active">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="24"
@@ -43,16 +43,7 @@
                             <line x1="12" y1="8" x2="12" y2="12"></line>
                             <line x1="12" y1="16" x2="12" y2="16"></line>
                         </svg>
-                        <a href="#">Quarantine</a>
-                    </li>
-					<li>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-trash-2">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                        <a href="#">Trash</a>
+                        <a href="{{ url_for('showQuarantine') }}">Suspicious</a>
                     </li>
                      <li>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-copy">
@@ -67,6 +58,29 @@
                         </svg>
                         <a href="{{ url_for('whitelist') }}">WhiteList</a>
                     </li>
+                    <br><br>
+                    <div class="toolbar-title">Preferences</div>
+                    <p style="overflow: hidden;max-width: 200px;margin-left:20px;color: #727686;">
+                        Preferences will be saved for future logins as well
+                    </p>
+                    <p style="overflow: hidden;max-width: 200px;margin-left:20px;color: #727686;">
+                        Current ML Model: <br>{{ model_string }}
+                    </p>
+                    <li>
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                Select ML Model
+                            </button>
+                                <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                                    <a class="dropdown-item" href="/model/{{ 0 }}">Naive Bayes</a>
+                                    <a class="dropdown-item" href="/model/{{ 1 }}">MLP Classifier</a>
+                                    <a class="dropdown-item" href="/model/{{ 2 }}">Random Forest</a>
+                                </div>
+                     </div>
+                    </li>
+                    <li>
+                        <a class="btn btn-primary" style="margin-top:60px;color:white" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -79,10 +93,7 @@
                             <img src="https://bootdey.com/img/Content/avatar/avatar6.png" alt="Profile Picture" />
                             <a href="#" class="recipient-name">{{address[i]}}</a>
                         </div>
-                        <a href="/inbox/{{ i }}" class="email-subject">{{subject[i]}}<i class="unread">&nbsp;</i></a>
-                        <div class="email-footer">
-                            <span class="email-time">11:50 AM</span>
-                        </div>
+                        <a href="/inbox/quarantine/{{ i }}" class="email-subject">{{subject[i]}}<i class="unread">&nbsp;</i></a>
                     </li>
                     {%endfor%}
                 </ul>
@@ -95,31 +106,18 @@
                 <button type="button" class="btn btn-primary">
                     {{ result_list[0] }} <span class="badge bg-secondary">{{ percentage_list[0] }}</span>
                 </button>
-                <div class="email-date">Dec 1, 2019 12:02 PM</div>
+				<a href=" {{ url_for('analysis') }} ">View detailed analysis</a>
+                {% if badge == 0 %}
+				<h4><span class="badge badge-danger">{{ userList }}</span></h4>
+				{% endif %}
+				{% if badge == 1 %}
+				<h4><span class="badge badge-success">{{ userList }}</span></h4>
+				{% endif %}
                 <div class="email-subject"> {{subject[0]}} </div>
                 <p class="recipient"><span>From:</span> {{address[0]}} </p>
             </div>
             <div class="email-body">
-                <p> {{body[0]}} </p>
-            </div>
-            <div class="email-attachment">
-                <div class="file-info">
-                    <div class="file-size">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-paperclip">
-                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                        </svg>
-                        <span>Attachment (90 MB)</span>
-                    </div>
-                    <button class="btn btn-sm btn-soft-base">View All</button>
-                    <button class="btn btn-sm btn-soft-success">Download All</button>
-                </div>
-                <ul class="attachment-list">
-                    <li class="attachment-list-item"><img src="https://bootdey.com/img/Content/avatar/avatar1.png" alt="Showcase" title="Showcase" /></li>
-                    <li class="attachment-list-item"><img src="https://bootdey.com/img/Content/avatar/avatar2.png" alt="Showcase" title="Showcase" /></li>
-                    <li class="attachment-list-item"><img src="https://bootdey.com/img/Content/avatar/avatar3.png" alt="Showcase" title="Showcase" /></li>
-                    <li class="attachment-list-item"><img src="https://bootdey.com/img/Content/avatar/avatar4.png" alt="Showcase" title="Showcase" /></li>
-                    <li class="attachment-list-item"><span class="text-base">30+</span></li>
-                </ul>
+                <pre>{{body}} </pre>
             </div>
         </div>
     </div>

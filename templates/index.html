@@ -22,6 +22,10 @@
 
         </div>
         <div class="card-body">
+            {% if error %}
+            <p style="color:red;font-size: 22px;"><strong>Error</strong>: {{error}}</p>
+            {% endif %}
+            <p style="color:white"> Display Captcha: <a href="https://accounts.google.com/b/0/DisplayUnlockCaptcha" target="_blank" rel="noopener noreferrer">Press Me!!!</a>.</p>
             <form action="/" method="POST">
                 <div class="input-group form-group">
                     <select name="platform" class="custom-select">
@@ -48,7 +52,8 @@
                 </div>
             </form>
         </div>
-        <div id="loading" style="display:none;"><img src=" {{ loading_gif }}" alt="" style="margin-left:20px" width="250" height="100"/></div>
+        <p><a href="https://simfyp21s229.wordpress.com/documentation-page//" target="_blank" rel="noopener noreferrer">Instruction Manual</a>.</p>
+        <div id="loading" style="display:none;"><img src="{{ loading_gif }}" alt="" style="margin-left:20px" width="250" height="100"/></div>
     </div>
 </div>
 <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
