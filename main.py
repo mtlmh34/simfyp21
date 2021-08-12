@@ -2,6 +2,7 @@ import os
 import re
 
 from flask import Flask, render_template, url_for, request, flash, redirect
+
 import imaplib
 # For connection
 import easyimap as e
@@ -13,9 +14,6 @@ from openpyxl import load_workbook
 import pandas as pd
 from joblib import dump, load
 import numpy as np
-# import tkinter
-# from tkinter import *
-# import tkinter.messagebox
 
 import nltk
 
@@ -24,6 +22,13 @@ nltk.download('stopwords')
 from nltk import PorterStemmer, word_tokenize
 from nltk.corpus import stopwords
 from functions import mainFunctions
+from mlpfeature import html_exists
+from mlpfeature import count_domain
+from mlpfeature import count_dots
+from mlpfeature import account_exists
+from mlpfeature import paypal_exists
+from mlpfeature import login_exists
+from mlpfeature import bank_exists
 
 # Import function from another python file
 from sklearn.feature_extraction.text import CountVectorizer
@@ -59,23 +64,19 @@ def login():
             return render_template('index.html', image_file=image_file, loading_gif=loading_gif)
 
     except imaplib.IMAP4.error:
-        '''window = Tk()
-        window.attributes('-topmost', True)
-        window.wm_withdraw()
-        window.geometry(f"1x1+{round(window.winfo_screenwidth() / 2)}+{round(window.winfo_screenheight() / 2)}")
-        tkinter.messagebox.showerror(title="Invalid credentials", message="Please re-enter user credentials",
-                                     parent=window)'''
-        return render_template('index.html', image_file=image_file)
+        error = "invalid credentials"
+        return render_template('index.html', image_file=image_file, error=error)
 
 
 ##############################################################################################
-
+#ML Data processing functions
 def cleaning(string):
     string = re.sub("[^0-9a-zA-Z\ ]", "", str(string))
     string = string.lower()
     string = string.strip()
 
     return string
+
 
 
 def stem(string):
@@ -113,13 +114,88 @@ def email():
     global email_address_list
     global percentage_list
     global result_list
+    global model  # ML Model id 0,1 or 2
+    global model_string # name of model
+    global spellingResult
+    global emailValidResultList
+    global attachmentResultList
+    global linkResultList
+    global htmlExistsList
+    global domainCountList
+    global dotCountList
+    global accountExistsList
+    global paypalExistsList
+    global loginExistsList
+    global bankExistsList
+    global userBlacklist
+    global userWhitelist
+
+
+    # check if user have blacklist and whitelist
+    wbB = load_workbook('blacklist.xlsx')
+    if username in wbB.sheetnames:
+        sheetB = wbB[username]
+    else:
+        # wb.create_sheet(username)
+        wbB.copy_worksheet(wbB["blacklist"]).title = username
+        wbB.save('blacklist.xlsx')
+        sheetB = wbB[username]
+
+    wbW = load_workbook('whitelist.xlsx')
+    if username in wbW.sheetnames:
+        sheetW = wbW[username]
+    else:
+        # wb.create_sheet(username)
+        wbW.copy_worksheet(wbW["whitelist"]).title = username
+        wbW.save('whitelist.xlsx')
+        sheetW = wbW[username]
+
+    userBlacklist = []
+    row_countB = sheetB.max_row
+    for i in range(1, row_countB + 1):
+        for k in range(1, 3):
+            if k == 1:
+                emailadd = sheetB.cell(row=i, column=k).value
+                userBlacklist.append(emailadd)
+    userWhitelist = []
+    row_countW = sheetW.max_row
+    for i in range(1, row_countW + 1):
+        for k in range(1, 3):
+            if k == 1:
+                emailadd = sheetW.cell(row=i, column=k).value
+                userWhitelist.append(emailadd)
+
+
+    # 0-naivebayes, 1-MLP, 2-randomforest
+    wb = load_workbook('model.xlsx')
+    sheet = wb["Sheet1"]  # values will be saved to excel sheet"blacklist"
+    model = sheet['A1'].value
+    print("MODEL should be a number  ", model)
+    wb.close()
+
+    if model == 0:
+        model_string = "Naive Bayes"
+    if model == 1:
+        model_string = "Multilayer Perceptron (MLP)"
+    if model == 2:
+        model_string = "Random Forest"
 
     percentage_list = []
     subject_list = []
     body_list = []
     email_address_list = []
-    date_list = []
     result_list = []
+    emailValidResultList = []
+    attachmentResultList = []
+    linkResultList = []
+    htmlExistsList = []
+    domainCountList = []
+    dotCountList = []
+    accountExistsList = []
+    paypalExistsList = []
+    loginExistsList = []
+    bankExistsList = []
+
     # Authenticates and retrieves email
 
     # logging emails
@@ -141,14 +217,7 @@ def email():
             email = server.mail(server.listids()[0])
             ws = wb[username]
             excelRow = 2
-            '''test = ws["A2"].value
-            test = test.strip()
-            test1 = email.title
-            test1 = test1.strip(test1)
-            for a, b in zip(test, test1):
-                if a != b:
-                    print(a + b)'''
-            if ws["A2"].value == email.title and ws["B2"].value == email.from_addr:
+            if ws["A2"].value == email.title and ws["B2"].value == email.from_addr: #user have no new email
                 print("This is working")
                 for x in range(1, ws.max_row):
                     # read from excel file
@@ -193,12 +262,62 @@ def email():
                     percentage_list.append(ws[excelPosition].value)
                     print(excelPosition)
 
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    emailValidResultList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    attachmentResultList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    linkResultList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    htmlExistsList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    domainCountList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    dotCountList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    accountExistsList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    paypalExistsList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    loginExistsList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
+                    excelColumn = chr(ord(excelColumn) + 1)
+                    excelPosition = excelColumn + str(excelRow)
+                    bankExistsList.append(ws[excelPosition].value)
+                    print(excelPosition)
+
                     excelRow += 1
                     wb.save("logs.xlsx")
 
-            '''else:  # user have no new email
-                print("Finding new email")
-                checkTitle = ws["A2"].value
+            else:  # user have new email
+                print("new email found")
+                '''checkTitle = ws["A2"].value
                 checkAddr = ws["B2"].value
                 # server = e.connect(imap_url, username, password)
                 # inbox = server.listids()
@@ -207,31 +326,70 @@ def email():
                     if checkTitle == email.title and checkAddr == email.from_addr:
                         break
                     else:
-                        # log.txt file
-                        logger.info("----------------------------------------------------------------")
-                        logger.info("Email Title:")
-                        logger.info(email.title)
-                        logger.info("Email from:")
-                        logger.info(email.from_addr)
-                        logger.info("Message: ")
-                        logger.info(email.body)
-
-                        string = email.body
+                        # ML
+                        string = body
                         string = cleaning(string)
                         string = stem(string)
                         string = remove_stopwords(string)
 
-                        # ML
+                        # dataFrame with only the email body that has been cleaned for use with Naive Bayes only
                         n_df = pd.DataFrame({'text': string}, index=[0])
-                        n_df.head()
-                        vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
-                        nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
 
-                        x_matrix = vectorizer.transform(n_df['text'])
-                        my_prediction = nbclf.predict(x_matrix)
-                        percentage = nbclf.predict_proba(x_matrix)
-                        # percentage = np.array(percentage)
-                        # percentage = ['{:f}'.format(item) for item in percentage]
+                        # dataFrame for MLP and RandomForest model (Data not cleaned on purpose)
+                        df = pd.DataFrame({'text': body}, index=[0])
+
+                        # dataFrame with columns extracted from email
+                        mlp_df = pd.DataFrame(columns=['HtmlExists', 'DomainCount', 'DotCount',
+                                                       'AccountExists', 'PaypalExists', 'LoginExists', 'BankExists'])
+
+                        mlp_df['HtmlExists'] = df['text'].apply(html_exists)
+                        mlp_df['DomainCount'] = df['text'].apply(count_domain)
+                        mlp_df['DotCount'] = df['text'].apply(count_dots)
+                        mlp_df['AccountExists'] = df['text'].apply(account_exists)
+                        mlp_df['PaypalExists'] = df['text'].apply(paypal_exists)
+                        mlp_df['LoginExists'] = df['text'].apply(login_exists)
+                        mlp_df['BankExists'] = df['text'].apply(bank_exists)
+                        print(mlp_df)
+
+                        # save columns to variable
+                        htmlExists = mlp_df.iloc[0]['HtmlExists']
+                        domainCount = mlp_df.iloc[0]['DomainCount']
+                        dotCount = mlp_df.iloc[0]['DotCount']
+                        accountExists = mlp_df.iloc[0]['AccountExists']
+                        paypalExists = mlp_df.iloc[0]['PaypalExists']
+                        loginExists = mlp_df.iloc[0]['LoginExists']
+                        bankExists = mlp_df.iloc[0]['BankExists']
+
+                        # append to list
+                        htmlExistsList.append(htmlExists)
+                        domainCountList.append(domainCount)
+                        dotCountList.append(dotCount)
+                        accountExistsList.append(accountExists)
+                        paypalExistsList.append(paypalExists)
+                        loginExistsList.append(loginExists)
+                        bankExistsList.append(bankExists)
+
+                        if model == 0:  # naive bayes
+                            vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
+                            nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
+                            x_matrix = n_df['text']
+                            x_matrix = vectorizer.transform(n_df['text'])
+                            my_prediction = nbclf.predict(x_matrix)
+                            percentage = nbclf.predict_proba(x_matrix)
+                            print(my_prediction, "MY PREDICTION")
+
+                        if model == 1:  # MLP
+                            nbclf = load(r'mlp.joblib')
+                            my_prediction = nbclf.predict(mlp_df)
+                            percentage = nbclf.predict_proba(mlp_df)
+                            print(my_prediction, "MY PREDICTION")
+
+                        if model == 2:  # Random Forest
+                            nbclf = load(r'randomforest.joblib')
+                            my_prediction = nbclf.predict(mlp_df)
+                            percentage = nbclf.predict_proba(mlp_df)
+                            print(my_prediction, "MY PREDICTION")
+
                         np.set_printoptions(formatter={'float_kind': '{:f}'.format})
 
                         if my_prediction == 1:
@@ -239,14 +397,16 @@ def email():
                             percentage = format(percentage[0][1], '.12f')  # to 12decimal place
                             percentage = float(percentage) * 100  # convert to percent
                             percentage = str(percentage) + '%'
+                            percentage_list.append(percentage)
                         elif my_prediction == 0:
                             ml_result = 'Non-Phishing'
                             percentage = format(percentage[0][0], '.12f')  # to 12decimal place
                             percentage = float(percentage) * 100  # convert to percent
                             percentage = str(percentage) + '%'
+                            percentage_list.append(percentage)
 
-                        logger.info("Email attachment: ")
-                        logger.info(email.attachments)
+                        # logger.info("Email attachment: ")
+                        # logger.info(email.attachments)
                         emailAttachment = email.attachments
                         if not emailAttachment:
                             emailAttach = "-"
@@ -259,103 +419,131 @@ def email():
                         logger.info("----------------------------------------------------------------")
 
                         # Run function and counter check with ML result
-                        functionResult = 100
+                        functionResult = 0
                         emailConFormat = mainFunctions.content_formatting(email.body)
-                        # spellingResult = mainFunctions.spelling_check(emailConFormat)
-                        spellingResult = mainFunctions.spelling_check(str(email.title))
                         emailValidResult = mainFunctions.email_valid(email.from_addr)
+                        emailValidResultList.append(emailValidResult)
                         attachmentResult = mainFunctions.attachment_check(emailAttach)
+                        attachmentResultList.append(attachmentResult)
                         linkResult = mainFunctions.check_link(email.body)
+                        linkResultList.append(linkResult)
+                        print("Email valid: ", emailValidResult)
+                        print("attachment check: ", attachmentResult)
+                        print("Link Check: ", linkResult)
 
-                        function_indi = " || "
                         # compile result
-                        if spellingResult:
-                            functionResult -= 25
-                            function_indi += " A"
-                        else:
-                            function_indi += " 0"
-
                         if emailValidResult:
-                            functionResult -= 25
-                            function_indi += " B"
-                        else:
-                            function_indi += " 0"
-
+                            functionResult += 25
                         if attachmentResult:
-                            functionResult -= 25
-                            function_indi += " C"
-                        else:
-                            function_indi += " 0"
-
+                            functionResult += 25
                         if linkResult:
-                            functionResult -= 25
-                            function_indi += " D"
-                        else:
-                            function_indi += " 0"
+                            functionResult += 50
 
-                        if functionResult > 50:
+                        if functionResult >= 50:
                             function_result = 'Phishing'
                         else:
                             function_result = 'Non-Phishing'
 
-                        # counter check
-                        if function_result == ml_result:
-                            result = ml_result
-                        else:
-                            result = 'Suspicious'
-
-                        # Extra just to check
-                        function_result = function_result + " || " + str(functionResult) + function_indi
+                        result_list.append(ml_result)
+                        
                         # insert row in excel
                         ws.insert_rows(2)
-                        # excel file
+
+                        # read from excel file
                         excelColumn = 'A'
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = email.title
+                        subject_list.append(ws[excelPosition].value)
                         print(excelPosition)
 
                         excelColumn = chr(ord(excelColumn) + 1)
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = email.from_addr
+                        email_address_list.append(ws[excelPosition].value)
                         print(excelPosition)
 
                         excelColumn = chr(ord(excelColumn) + 1)
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = emailConFormat
+                        body_list.append(ws[excelPosition].value)
                         print(excelPosition)
 
                         excelColumn = chr(ord(excelColumn) + 1)
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = "-"
                         print(excelPosition)
 
                         excelColumn = chr(ord(excelColumn) + 1)
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = result
+                        result_list.append(ws[excelPosition].value)
                         print(excelPosition)
 
                         excelColumn = chr(ord(excelColumn) + 1)
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = emailAttach
                         print(excelPosition)
 
                         excelColumn = chr(ord(excelColumn) + 1)
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = ml_result
                         print(excelPosition)
 
                         excelColumn = chr(ord(excelColumn) + 1)
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = function_result
                         print(excelPosition)
 
                         excelColumn = chr(ord(excelColumn) + 1)
                         excelPosition = excelColumn + str(excelRow)
-                        ws[excelPosition] = percentage
+                        percentage_list.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        emailValidResultList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        attachmentResultList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        linkResultList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        htmlExistsList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        domainCountList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        dotCountList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        accountExistsList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        paypalExistsList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        loginExistsList.append(ws[excelPosition].value)
+                        print(excelPosition)
+
+                        excelColumn = chr(ord(excelColumn) + 1)
+                        excelPosition = excelColumn + str(excelRow)
+                        bankExistsList.append(ws[excelPosition].value)
                         print(excelPosition)
 
                         excelRow += 1
-                        # wb.save("logs.xlsx")'''
+                        wb.save("logs.xlsx")'''
+
             # wb.save("logs.xlsx")
             # load into list for web
             wb = load_workbook("logs.xlsx")
@@ -406,6 +594,56 @@ def email():
                 percentage_list.append(wsNew[excelPosition].value)
                 print(excelPosition)
 
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                emailValidResultList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                attachmentResultList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                linkResultList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                htmlExistsList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                domainCountList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                dotCountList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                accountExistsList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                paypalExistsList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                loginExistsList.append(ws[excelPosition].value)
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                bankExistsList.append(ws[excelPosition].value)
+                print(excelPosition)
+
                 excelRow += 1
 
         else:  # create new sheet for new email
@@ -418,20 +656,12 @@ def email():
             # inbox = server.listids()
             for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
                 email = server.mail(server.listids()[x])
-                # log.txt file
-                logger.info("----------------------------------------------------------------")
-                logger.info("Email Title:")
-                logger.info(email.title)
-                logger.info("Email from:")
-                logger.info(email.from_addr)
-                logger.info("Message: ")
-                logger.info(email.body)
-
                 # store email subject, body in list
                 email_address_list.append(email.from_addr)
                 subject_list.append(email.title)
                 body = mainFunctions.content_formatting(email.body)
                 body_list.append(body)
+
 
                 # ML
                 string = body
@@ -439,17 +669,64 @@ def email():
                 string = stem(string)
                 string = remove_stopwords(string)
 
+                # dataFrame with only the email body that has been cleaned for use with Naive Bayes only
                 n_df = pd.DataFrame({'text': string}, index=[0])
-                n_df.head()
-                vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
-                nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
-                # nbclf = load(r'mlp.joblib')
 
-                x_matrix = vectorizer.transform(n_df['text'])
-                my_prediction = nbclf.predict(x_matrix)
-                percentage = nbclf.predict_proba(x_matrix)
-                # percentage = np.array(percentage)
-                # percentage = ['{:f}'.format(item) for item in percentage]
+                # dataFrame for MLP and RandomForest model (Data not cleaned on purpose)
+                df = pd.DataFrame({'text': body}, index=[0])
+
+                # dataFrame with columns extracted from email
+                mlp_df = pd.DataFrame(columns=['HtmlExists', 'DomainCount', 'DotCount',
+                                               'AccountExists', 'PaypalExists', 'LoginExists', 'BankExists'])
+
+                mlp_df['HtmlExists'] = df['text'].apply(html_exists)
+                mlp_df['DomainCount'] = df['text'].apply(count_domain)
+                mlp_df['DotCount'] = df['text'].apply(count_dots)
+                mlp_df['AccountExists'] = df['text'].apply(account_exists)
+                mlp_df['PaypalExists'] = df['text'].apply(paypal_exists)
+                mlp_df['LoginExists'] = df['text'].apply(login_exists)
+                mlp_df['BankExists'] = df['text'].apply(bank_exists)
+                print(mlp_df)
+
+                # save columns to variable
+                htmlExists = mlp_df.iloc[0]['HtmlExists']
+                domainCount = mlp_df.iloc[0]['DomainCount']
+                dotCount = mlp_df.iloc[0]['DotCount']
+                accountExists = mlp_df.iloc[0]['AccountExists']
+                paypalExists = mlp_df.iloc[0]['PaypalExists']
+                loginExists = mlp_df.iloc[0]['LoginExists']
+                bankExists = mlp_df.iloc[0]['BankExists']
+
+                # append to list
+                htmlExistsList.append(htmlExists)
+                domainCountList.append(domainCount)
+                dotCountList.append(dotCount)
+                accountExistsList.append(accountExists)
+                paypalExistsList.append(paypalExists)
+                loginExistsList.append(loginExists)
+                bankExistsList.append(bankExists)
+
+                if model == 0:  # naive bayes
+                    vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
+                    nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
+                    x_matrix = n_df['text']
+                    x_matrix = vectorizer.transform(n_df['text'])
+                    my_prediction = nbclf.predict(x_matrix)
+                    percentage = nbclf.predict_proba(x_matrix)
+                    print(my_prediction, "MY PREDICTION")
+
+                if model == 1:  # MLP
+                    nbclf = load(r'mlp.joblib')
+                    my_prediction = nbclf.predict(mlp_df)
+                    percentage = nbclf.predict_proba(mlp_df)
+                    print(my_prediction, "MY PREDICTION")
+
+                if model == 2:  # Random Forest
+                    nbclf = load(r'randomforest.joblib')
+                    my_prediction = nbclf.predict(mlp_df)
+                    percentage = nbclf.predict_proba(mlp_df)
+                    print(my_prediction, "MY PREDICTION")
+
                 np.set_printoptions(formatter={'float_kind': '{:f}'.format})
 
                 if my_prediction == 1:
@@ -465,8 +742,8 @@ def email():
                     percentage = str(percentage) + '%'
                     percentage_list.append(percentage)
 
-                logger.info("Email attachment: ")
-                logger.info(email.attachments)
+                # logger.info("Email attachment: ")
+                # logger.info(email.attachments)
                 emailAttachment = email.attachments
                 if not emailAttachment:
                     emailAttach = "-"
@@ -479,36 +756,39 @@ def email():
                 logger.info("----------------------------------------------------------------")
 
                 # Run function and counter check with ML result
-                functionResult = 100
+                functionResult = 0
                 emailConFormat = mainFunctions.content_formatting(email.body)
-                # spellingResult = mainFunctions.spelling_check(emailConFormat)
-                spellingResult = mainFunctions.spelling_check(str(email.title))
                 emailValidResult = mainFunctions.email_valid(email.from_addr)
+                emailValidResultList.append(emailValidResult)
                 attachmentResult = mainFunctions.attachment_check(emailAttach)
+                attachmentResultList.append(attachmentResult)
                 linkResult = mainFunctions.check_link(email.body)
+                linkResultList.append(linkResult)
+                print("Email valid: ", emailValidResult)
+                print("attachment check: ", attachmentResult)
+                print("Link Check: ", linkResult)
 
                 # compile result
-                if spellingResult:
-                    functionResult -= 25
                 if emailValidResult:
-                    functionResult -= 25
+                    functionResult += 25
                 if attachmentResult:
-                    functionResult -= 25
+                    functionResult += 25
                 if linkResult:
-                    functionResult -= 25
+                    functionResult += 50
 
-                if functionResult > 50:
+                if functionResult >= 50:
                     function_result = 'Phishing'
                 else:
                     function_result = 'Non-Phishing'
 
-                # counter check
-                if function_result == ml_result:
-                    result = ml_result
-                else:
-                    result = 'Suspicious'
+                result_list.append(ml_result)
 
-                result_list.append(result)
+                # Check if email address is in user blacklist or whitelist
+                listing = "-"
+                if email.from_addr in userBlacklist:
+                    listing = "blacklist"
+                if email.from_addr in userWhitelist:
+                    listing = "blacklist"
 
                 # excel file titles
                 excelColumn1 = 'A1'
@@ -565,6 +845,66 @@ def email():
                 # ws.write(excelPosition9, "Percentage")
                 print(excelPosition9)
 
+                excelColumn10 = 'J1'
+                excelPosition10 = excelColumn10
+                ws[excelPosition10] = "Email Valid"
+                # ws.write(excelPosition10, "Email Valid")
+                print(excelPosition10)
+
+                excelColumn11 = 'K1'
+                excelPosition11 = excelColumn11
+                ws[excelPosition11] = "Attachment Result"
+                # ws.write(excelPosition11, "Attachment Result")
+                print(excelPosition11)
+
+                excelColumn12 = 'L1'
+                excelPosition12 = excelColumn12
+                ws[excelPosition12] = "Link Result"
+                # ws.write(excelPosition12, "Link Result")
+                print(excelPosition12)
+
+                excelColumn13 = 'M1'
+                excelPosition13 = excelColumn13
+                ws[excelPosition13] = "HTML Exists"
+                # ws.write(excelPosition13, "HTML Exists")
+                print(excelPosition13)
+
+                excelColumn14 = 'N1'
+                excelPosition14 = excelColumn14
+                ws[excelPosition14] = "Domain Count"
+                # ws.write(excelPosition14, "Domain Count")
+                print(excelPosition14)
+
+                excelColumn15 = 'O1'
+                excelPosition15 = excelColumn15
+                ws[excelPosition15] = "Dot Count"
+                # ws.write(excelPosition15, "Dot Count")
+                print(excelPosition15)
+
+                excelColumn16 = 'P1'
+                excelPosition16 = excelColumn16
+                ws[excelPosition16] = "Account Exists"
+                # ws.write(excelPosition16, "Account Exists")
+                print(excelPosition16)
+
+                excelColumn17 = 'Q1'
+                excelPosition17 = excelColumn17
+                ws[excelPosition17] = "Paypal Exist"
+                # ws.write(excelPosition17, "Paypal exists")
+                print(excelPosition17)
+
+                excelColumn18 = 'R1'
+                excelPosition18 = excelColumn18
+                ws[excelPosition18] = "Login Exists"
+                # ws.write(excelPosition18, "Login exists")
+                print(excelPosition18)
+
+                excelColumn19 = 'S1'
+                excelPosition19 = excelColumn19
+                ws[excelPosition19] = "Bank Exists"
+                # ws.write(excelPosition19, "Bank Exists")
+                print(excelPosition19)
+
                 # excel file
                 excelColumn = 'A'
                 excelPosition = excelColumn + str(excelRow)
@@ -586,13 +926,13 @@ def email():
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                ws[excelPosition] = "-"
+                ws[excelPosition] = listing
                 # ws.write(excelPosition, "-")
                 print(excelPosition)
 
                 excelColumn = chr(ord(excelColumn) + 1)
                 excelPosition = excelColumn + str(excelRow)
-                ws[excelPosition] = result
+                ws[excelPosition] = ml_result
                 # ws.write(excelPosition, result)
                 print(excelPosition)
 
@@ -620,7 +960,55 @@ def email():
                 # ws.write(excelPosition, percentage)
                 print(excelPosition)
 
-                excelRow += 1
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = emailValidResult
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = attachmentResult
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = linkResult
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = htmlExists
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = domainCount
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = dotCount
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = accountExists
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = paypalExists
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = loginExists
+                print(excelPosition)
+
+                excelColumn = chr(ord(excelColumn) + 1)
+                excelPosition = excelColumn + str(excelRow)
+                ws[excelPosition] = bankExists
+                print(excelPosition)
             # ws.close()
             wb.save("logs.xlsx")
 
@@ -638,14 +1026,6 @@ def email():
 
         for x in range(0, len(inbox)):  # change 10 to len(inbox) to get 100 mails
             email = server.mail(server.listids()[x])
-            # log.txt file
-            logger.info("----------------------------------------------------------------")
-            logger.info("Email Title:")
-            logger.info(email.title)
-            logger.info("Email from:")
-            logger.info(email.from_addr)
-            logger.info("Message: ")
-            logger.info(email.body)
 
             # store email subject, body in list
             email_address_list.append(email.from_addr)
@@ -659,15 +1039,65 @@ def email():
             string = stem(string)
             string = remove_stopwords(string)
 
+            # dataFrame with only the email body
             n_df = pd.DataFrame({'text': string}, index=[0])
-            n_df.head()
-            vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
-            nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
-            # nbclf = load(r'mlp.joblib')
 
-            x_matrix = vectorizer.transform(n_df['text'])
-            my_prediction = nbclf.predict(x_matrix)
-            percentage = nbclf.predict_proba(x_matrix)
+            # dataFrame for MLP and RandomForest model (Data not cleaned on purpose)
+            df = pd.DataFrame({'text': body}, index=[0])
+
+            # dataFrame with columns extracted from email
+            mlp_df = pd.DataFrame(columns=['HtmlExists', 'DomainCount', 'DotCount',
+                                           'AccountExists', 'PaypalExists', 'LoginExists', 'BankExists'])
+
+            # perform function and create columns
+            mlp_df['HtmlExists'] = df['text'].apply(html_exists)
+            mlp_df['DomainCount'] = df['text'].apply(count_domain)
+            mlp_df['DotCount'] = df['text'].apply(count_dots)
+            mlp_df['AccountExists'] = df['text'].apply(account_exists)
+            mlp_df['PaypalExists'] = df['text'].apply(paypal_exists)
+            mlp_df['LoginExists'] = df['text'].apply(login_exists)
+            mlp_df['BankExists'] = df['text'].apply(bank_exists)
+            print(mlp_df)
+
+            # save value to variable
+            htmlExists = mlp_df.iloc[0]['HtmlExists']
+            domainCount = mlp_df.iloc[0]['DomainCount']
+            dotCount = mlp_df.iloc[0]['DotCount']
+            accountExists = mlp_df.iloc[0]['AccountExists']
+            paypalExists = mlp_df.iloc[0]['PaypalExists']
+            loginExists = mlp_df.iloc[0]['LoginExists']
+            bankExists = mlp_df.iloc[0]['BankExists']
+
+            # append to list
+            htmlExistsList.append(htmlExists)
+            domainCountList.append(domainCount)
+            dotCountList.append(dotCount)
+            accountExistsList.append(accountExists)
+            paypalExistsList.append(paypalExists)
+            loginExistsList.append(loginExists)
+            bankExistsList.append(bankExists)
+
+            if model == 0:  # naive bayes
+                vectorizer = load(r'naivebayesVectorizer.joblib')  # load vectorizer
+                nbclf = load(r'naivebayes.joblib')  # load the naivebayes ml model
+                x_matrix = n_df['text']
+                x_matrix = vectorizer.transform(n_df['text'])
+                my_prediction = nbclf.predict(x_matrix)
+                percentage = nbclf.predict_proba(x_matrix)
+                print(my_prediction, "MY PREDICTION")
+
+            if model == 1:  # MLP
+                nbclf = load(r'mlp.joblib')
+                my_prediction = nbclf.predict(mlp_df)
+                percentage = nbclf.predict_proba(mlp_df)
+                print(my_prediction, "MY PREDICTION")
+
+            if model == 2:  # Random Forest
+                nbclf = load(r'randomforest.joblib')
+                my_prediction = nbclf.predict(mlp_df)
+                percentage = nbclf.predict_proba(mlp_df)
+                print(my_prediction, "MY PREDICTION")
+
             # percentage = np.array(percentage)
             # percentage = ['{:f}'.format(item) for item in percentage]
             np.set_printoptions(formatter={'float_kind': '{:f}'.format})
@@ -685,8 +1115,8 @@ def email():
                 percentage = str(percentage) + '%'
                 percentage_list.append(percentage)
 
-            logger.info("Email attachment: ")
-            logger.info(email.attachments)
+            # logger.info("Email attachment: ")
+            # logger.info(email.attachments)
             emailAttachment = email.attachments
             if not emailAttachment:
                 emailAttach = "-"
@@ -701,34 +1131,37 @@ def email():
             # Run function and counter check with ML result
             functionResult = 100
             emailConFormat = mainFunctions.content_formatting(email.body)
-            # spellingResult = mainFunctions.spelling_check(emailConFormat)
-            spellingResult = mainFunctions.spelling_check(str(email.title))
             emailValidResult = mainFunctions.email_valid(email.from_addr)
+            emailValidResultList.append(emailValidResult)
             attachmentResult = mainFunctions.attachment_check(emailAttach)
+            attachmentResultList.append(attachmentResult)
             linkResult = mainFunctions.check_link(email.body)
+            linkResultList.append(linkResult)
+            print("Email valid: ", emailValidResult)
+            print("attachment check: ", attachmentResult)
+            print("Link Check: ", linkResult)
 
             # compile result
-            if spellingResult:
-                functionResult -= 25
             if emailValidResult:
-                functionResult -= 25
+                functionResult += 25
             if attachmentResult:
-                functionResult -= 25
+                functionResult += 25
             if linkResult:
-                functionResult -= 25
+                functionResult += 50
 
-            if functionResult > 50:
+            if functionResult >= 50:
                 function_result = 'Phishing'
             else:
                 function_result = 'Non-Phishing'
 
-            # counter check
-            if function_result == ml_result:
-                result = ml_result
-            else:
-                result = 'Suspicious'
+            result_list.append(ml_result)
 
-            result_list.append(result)
+            # Check if email address is in user blacklist or whitelist
+            listing = "-"
+            if email.from_addr in userBlacklist:
+                listing = "blacklist"
+            if email.from_addr in userWhitelist:
+                listing = "blacklist"
 
             # excel file titles
             excelColumn1 = 'A1'
@@ -761,20 +1194,70 @@ def email():
             worksheet.write(excelPosition6, "Attachment", bold)
             print(excelPosition6)
 
-            excelColumn6 = 'G1'
-            excelPosition6 = excelColumn6
-            worksheet.write(excelPosition6, "ML Result", bold)
-            print(excelPosition6)
-
-            excelColumn6 = 'H1'
-            excelPosition6 = excelColumn6
-            worksheet.write(excelPosition6, "Function Result", bold)
-            print(excelPosition6)
-
-            excelColumn7 = 'I1'
+            excelColumn7 = 'G1'
             excelPosition7 = excelColumn7
-            worksheet.write(excelPosition7, "Percentage", bold)
+            worksheet.write(excelPosition7, "ML Result", bold)
             print(excelPosition7)
+
+            excelColumn8 = 'H1'
+            excelPosition8 = excelColumn8
+            worksheet.write(excelPosition8, "Function Result", bold)
+            print(excelPosition8)
+
+            excelColumn9 = 'I1'
+            excelPosition9 = excelColumn9
+            worksheet.write(excelPosition9, "Percentage", bold)
+            print(excelPosition9)
+
+            excelColumn10 = 'J1'
+            excelPosition10 = excelColumn10
+            worksheet.write(excelPosition10, "Email Valid", bold)
+            print(excelPosition10)
+
+            excelColumn11 = 'K1'
+            excelPosition11 = excelColumn11
+            worksheet.write(excelPosition11, "Attachment Result", bold)
+            print(excelPosition11)
+
+            excelColumn12 = 'L1'
+            excelPosition12 = excelColumn12
+            worksheet.write(excelPosition12, "Link Result", bold)
+            print(excelPosition12)
+
+            excelColumn13 = 'M1'
+            excelPosition13 = excelColumn13
+            worksheet.write(excelPosition13, "HTML Exists", bold)
+            print(excelPosition13)
+
+            excelColumn14 = 'N1'
+            excelPosition14 = excelColumn14
+            worksheet.write(excelPosition14, "Domain Count", bold)
+            print(excelPosition14)
+
+            excelColumn15 = 'O1'
+            excelPosition15 = excelColumn15
+            worksheet.write(excelPosition15, "Dot Count", bold)
+            print(excelPosition15)
+
+            excelColumn16 = 'P1'
+            excelPosition16 = excelColumn16
+            worksheet.write(excelPosition16, "Account Exists", bold)
+            print(excelPosition16)
+
+            excelColumn17 = 'Q1'
+            excelPosition17 = excelColumn17
+            worksheet.write(excelPosition17, "Paypal Exists", bold)
+            print(excelPosition17)
+
+            excelColumn18 = 'R1'
+            excelPosition18 = excelColumn18
+            worksheet.write(excelPosition18, "Login Exists", bold)
+            print(excelPosition18)
+
+            excelColumn19 = 'S1'
+            excelPosition19 = excelColumn19
+            worksheet.write(excelPosition19, "Bank Exists", bold)
+            print(excelPosition19)
 
             # excel file
             excelColumn = 'A'
@@ -794,12 +1277,12 @@ def email():
 
             excelColumn = chr(ord(excelColumn) + 1)
             excelPosition = excelColumn + str(excelRow)
-            worksheet.write(excelPosition, "-")
+            worksheet.write(excelPosition, listing)
             print(excelPosition)
 
             excelColumn = chr(ord(excelColumn) + 1)
             excelPosition = excelColumn + str(excelRow)
-            worksheet.write(excelPosition, result)
+            worksheet.write(excelPosition, ml_result)
             print(excelPosition)
 
             excelColumn = chr(ord(excelColumn) + 1)
@@ -822,32 +1305,183 @@ def email():
             worksheet.write(excelPosition, percentage)
             print(excelPosition)
 
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, emailValidResult)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, attachmentResult)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, linkResult)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, htmlExists)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, domainCount)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, dotCount)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, accountExists)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, paypalExists)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, loginExists)
+            print(excelPosition)
+
+            excelColumn = chr(ord(excelColumn) + 1)
+            excelPosition = excelColumn + str(excelRow)
+            worksheet.write(excelPosition, bankExists)
+            print(excelPosition)
+
             excelRow += 1
         excel.close()
+
+
     server = smtplib.SMTP('smtp.gmail.com', 587)  # smtp settings, change accordingly.
     server.ehlo()
     server.starttls()  # secure connection
+    bodyList = body_list[0].replace("_x000D_", "")
+    specificList = "empty"
+    badge = 2
+    for x in userBlacklist:
+        if x in email_address_list[0]:
+            specificList = "Blacklist"
+            badge = 0  # red
+    for z in userWhitelist:
+        if z in email_address_list[0]:
+            specificList = "Whitelist"
+            badge = 1
+
     return render_template("inbox.html", len=len(subject_list), subject=subject_list,
-                           address=email_address_list, body=body_list,
-                           result_list=result_list, percentage_list=percentage_list)
+                           address=email_address_list, body=bodyList, userList=specificList, badge=badge,
+                           result_list=result_list, percentage_list=percentage_list, model_string=model_string)
 
 
 @app.route('/inbox/<num>')
 def showEmail(num):
     getresult = result_list[int(num)]
     getpercentage = percentage_list[int(num)]
+    specific_subject = subject_list[int(num)]
+    specific_address = email_address_list[int(num)]
+    specific_body = body_list[int(num)]
+    print(specific_subject)
+    specific_body = specific_body.replace("_x000D_", "")
+    specificList = "empty"
+    badge = 2
+    for x in userBlacklist:
+        if x in specific_address:
+            specificList = "Blacklist"
+            badge = 0  # red
+    for z in userWhitelist:
+        if z in specific_address:
+            specificList = "Whitelist"
+            badge = 1
 
     return render_template("inbox1.html", len=len(subject_list), subject=subject_list,
                            address=email_address_list, body=body_list, num=num,
-                           result=getresult, percentage=getpercentage)
+                           result=getresult, percentage=getpercentage, userList=specificList, badge=badge,
+                           specific_body=specific_body, specific_subject=specific_subject,
+                           specific_address=specific_address, model_string=model_string
+                           )
+
+@app.route('/inbox/analysis')
+def analysis():
+    emailValid = emailValidResultList[0]
+    if emailValid == True:
+        emailValid = 'Yes'
+    if emailValid == False:
+        emailValid = 'No'
+
+    attachment = attachmentResultList[0]
+    if attachment == True:
+        attachment = "No"
+    if attachment == False:
+        attachment = "Yes"
+
+    link = linkResultList[0]
+    if link == True:
+        link = "No"
+    if link == False:
+        link = "Yes"
+
+    htmlExist = htmlExistsList[0]
+    domainCount = domainCountList[0]
+    dotCount = dotCountList[0]
+    accountExist = accountExistsList[0]
+    paypalExist = paypalExistsList[0]
+    loginExist = loginExistsList[0]
+    bankExist = bankExistsList[0]
+
+    result = result_list[0]
+    percentage = percentage_list[0]
+
+    #mlp_df.to_csv('analysis.csv')
+    return render_template('analysis.html', emailValid=emailValid, attachment=attachment, link=link, htmlExist=htmlExist,
+                           domainCount=domainCount, dotCount=dotCount, accountExist=accountExist, paypalExist=paypalExist,
+                           loginExist=loginExist, bankExist=bankExist, result=result, percentage=percentage)
+
+
+@app.route('/inbox/<int:num>/analysis')
+def analysis1(num):
+    emailValid = emailValidResultList[num]
+    attachment = attachmentResultList[num]
+    link = linkResultList[num]
+
+    htmlExist = htmlExistsList[num]
+    domainCount = domainCountList[num]
+    dotCount = dotCountList[num]
+    accountExist = accountExistsList[num]
+    paypalExist = paypalExistsList[num]
+    loginExist = loginExistsList[num]
+    bankExist = bankExistsList[num]
+
+    result = result_list[num]
+    percentage = percentage_list[num]
+
+    return render_template('analysis1.html', emailValid=emailValid, attachment=attachment, link=link,
+                           htmlExist=htmlExist,
+                           domainCount=domainCount, dotCount=dotCount, accountExist=accountExist,
+                           paypalExist=paypalExist,
+                           loginExist=loginExist, bankExist=bankExist, result=result, percentage=percentage)
 
 
 @app.route('/inbox/blacklist')
 def blacklist():
+    global blacklist
+    blacklist = []
     wb = load_workbook('blacklist.xlsx')
-    sheet = wb["blacklist"]
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["blacklist"]).title = username
+        wb.save('blacklist.xlsx')
+        sheet = wb[username]
+
     row_count = sheet.max_row
-    list = []  # nested list of email address and status
+    # nested list of email address and status
     # nested list will look like this in the end [[email,status], [email1,status1], [email2,status2]]
     for i in range(1, row_count + 1):
         for k in range(1, 3):
@@ -855,18 +1489,27 @@ def blacklist():
                 emailadd = sheet.cell(row=i, column=k).value
                 list1 = []
                 list1.append(emailadd)
+                userBlacklist.append(emailadd)
             if k == 2:
                 status = sheet.cell(row=i, column=k).value
                 list1.append(status)
-                list.append(list1)
+                blacklist.append(list1)
 
-    return render_template("blacklist.html", list=list)
+
+    return render_template("blacklist.html", list=blacklist)
 
 
 @app.route('/inbox/blacklist/new', methods=['GET', 'POST'])
 def blacklistnew():
     wb = load_workbook('blacklist.xlsx')
-    sheet = wb["blacklist"]  # values will be saved to excel sheet"blacklist"
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["blacklist"]).title = username
+        wb.save('blacklist.xlsx')
+        sheet = wb[username]
+    # sheet = wb["blacklist"]  # values will be saved to excel sheet"blacklist"
     col2 = 'blacklisted'  # value of 2nd column in excel
     if request.method == 'POST':
         email1 = request.form['email1']  # id='email1' from html form
@@ -894,11 +1537,43 @@ def blacklistnew():
     else:
         return render_template("blacklistnew.html")
 
+@app.route('/inbox/blacklist/remove/<email>')
+def removeBlacklist(email):
+    wb = load_workbook('blacklist.xlsx')
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["blacklist"]).title = username
+        wb.save('blacklist.xlsx')
+        sheet = wb[username]
+    # sheet = wb["blacklist"]  # excel sheet"blacklist"
+    row_count = sheet.max_row
+    k = 1
+    print("This is email: ", email)
+
+    # itterate rows in excel sheet
+    for i in range(1, row_count + 1):
+        emailadd = sheet.cell(row=i, column=k).value
+        print(emailadd)
+        if emailadd == email:
+            row_number = i
+            sheet.delete_rows(i, 1)
+            wb.save('blacklist.xlsx')
+            wb.close()
+    return redirect('/inbox/blacklist')
 
 @app.route('/inbox/whitelist')
 def whitelist():
     wb = load_workbook('whitelist.xlsx')
-    sheet = wb["whitelist"]
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["whitelist"]).title = username
+        wb.save('whitelist.xlsx')
+        sheet = wb[username]
+
     row_count = sheet.max_row
     list = []  # nested list of email address and status
     # nested list will look like this in the end [[email,status], [email1,status1], [email2,status2]]
@@ -908,6 +1583,7 @@ def whitelist():
                 emailadd = sheet.cell(row=i, column=k).value
                 list1 = []
                 list1.append(emailadd)
+                userWhitelist.append(emailadd)
             if k == 2:
                 status = sheet.cell(row=i, column=k).value
                 list1.append(status)
@@ -919,7 +1595,14 @@ def whitelist():
 @app.route('/inbox/whitelist/new', methods=['GET', 'POST'])
 def whitelistnew():
     wb = load_workbook('whitelist.xlsx')
-    sheet = wb["whitelist"]  # values will be saved to excel sheet"whitelist"
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["whitelist"]).title = username
+        wb.save('whitelist.xlsx')
+        sheet = wb[username]
+
     col2 = 'whitelisted'  # value of 2nd column in excel
     if request.method == 'POST':
         email1 = request.form['email1']  # id='email1' from html form
@@ -948,11 +1631,43 @@ def whitelistnew():
         return render_template("whitelistnew.html")
 
 
+@app.route('/inbox/whitelist/remove/<email>')
+def removeWhitelist(email):
+    print("This is email: ", email)
+    wb = load_workbook('whitelist.xlsx')
+    if username in wb.sheetnames:
+        sheet = wb[username]
+    else:
+        # wb.create_sheet(username)
+        wb.copy_worksheet(wb["whitelist"]).title = username
+        wb.save('whitelist.xlsx')
+        sheet = wb[username]
+
+    row_count = sheet.max_row
+    k = 1
+
+    # itterate rows in excel sheet
+    for i in range(1, row_count + 1):
+        emailadd = sheet.cell(row=i, column=k).value
+        print(emailadd)
+        if emailadd == email:
+            row_number = i
+            sheet.delete_rows(i, 1)
+            wb.save('whitelist.xlsx')
+            wb.close()
+    return redirect('/inbox/whitelist')
+
 @app.route('/inbox/quarantine')
 def showQuarantine():
     from openpyxl import load_workbook
     wb = load_workbook('logs.xlsx')
-    ws = wb["Sheet1"]
+    ws = wb[username]
+    global percentageList
+    global subjectList
+    global bodyList
+    global emailAddressList
+    global resultList
+
     percentageList = []
     subjectList = []
     bodyList = []
@@ -960,19 +1675,74 @@ def showQuarantine():
     resultList = []
 
     for row in ws.rows:
-        if row[4].value == "Suspicious":
+        if row[4].value == "Phishing":
             subjectList.append(row[0].value)
             emailAddressList.append(row[1].value)
             bodyList.append(row[2].value)
             resultList.append(row[4].value)
             percentageList.append(row[8].value)
+    bodylist = bodyList[0].replace("_x000D_", "")
+    specificList = "empty"
+    badge = 2
+    for x in userBlacklist:
+        if x in emailAddressList[0]:
+            specificList = "Blacklist"
+            badge = 0  # red
+    for z in userWhitelist:
+        if z in emailAddressList[0]:
+            specificList = "Whitelist"
+            badge = 1
 
     return render_template("quarantine.html", len=len(subjectList), subject=subjectList,
-                           address=emailAddressList, body=bodyList,
-                           result_list=resultList, percentage_list=percentageList)
+                           address=emailAddressList, body=bodylist, userList=specificList, badge=badge,
+                           result_list=resultList, percentage_list=percentageList, model_string=model_string)
+
+@app.route('/inbox/quarantine/<num>')
+def showSuspicious(num):
+    getresult = resultList[int(num)]
+    getpercentage = percentageList[int(num)]
+    specific_subject = subjectList[int(num)]
+    specific_address = emailAddressList[int(num)]
+    specific_body = bodyList[int(num)]
+    specific_body = specific_body.replace("_x000D_", "")
+    specificList = "empty"
+    badge = 2
+    for x in userBlacklist:
+        if x in specific_address:
+            specificList = "Blacklist"
+            badge = 0  # red
+    for z in userWhitelist:
+        if z in specific_address:
+            specificList = "Whitelist"
+            badge = 1
+
+    return render_template("quarantine1.html", len=len(subjectList), subject=subjectList,
+                           address=emailAddressList, num=num, model_string=model_string,
+                           result=getresult, percentage=getpercentage, userList=specificList, badge=badge,
+                           specific_body=specific_body, specific_subject=specific_subject,
+                           specific_address=specific_address
+                           )
+
+@app.route('/model/<int:num>')
+def model(num):
+    wb = load_workbook('model.xlsx')
+    sheet = wb["Sheet1"]  # values will be saved to excel sheet"blacklist"
+    sheet['A1'] = num
+
+    wb.save('model.xlsx')
+    wb.close()
+
+    return redirect("/inbox")
+
+@app.route("/logout")
+def logout():
+    server.quit()
+    username = None
+    password = None
+    return redirect("/")
 
 
 # to run application
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8080, debug=False)
-    # app.run()
+    #app.run()
